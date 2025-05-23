@@ -93,8 +93,8 @@ const App = () => {
       <IsometricCity />
       <RainCanvas />
 
-      <audio ref={rainRef} src="/rain.mp3" loop />
-      <audio ref={cityRef} src="/city.mp3" loop />
+      <audio ref={rainRef} src="./rain.mp3" loop />
+      <audio ref={cityRef} src="./city.mp3" loop />
 
       <DraggableWindow>
         <div className="mb-2 flex gap-2">

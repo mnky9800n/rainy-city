@@ -4,15 +4,15 @@ import React, { useRef, useEffect, useState, useMemo } from "react";
 const tileConfig = {
   water: {
     color: "#3498db",
-    texture: "/textures/water.png" // Path to your texture
+    texture: "./textures/water.png" // Path to your texture
   },
   grass: {
     color: "#2ecc71",
-    texture: "/textures/grass.png"
+    texture: "./textures/grass.png"
   },
   building: {
     color: "#6cf",
-    texture: "/textures/building.png"
+    texture: "./textures/building.png"
   }
 };
 
