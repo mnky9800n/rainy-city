@@ -32,6 +32,7 @@ function drawTile(ctx, x, y, color, zoom = 1) {
   ctx.restore();
 }
 
+
 function generateCoastline(gridWidth, roughness = 7) {  // Changed to use gridWidth
   // Start with different initial points for variation
   let points = [
@@ -118,6 +119,15 @@ const IsometricCity = () => {
     return () => canvas.removeEventListener("wheel", handleWheel);
   }, []);
 
+  // pull the water tile texture
+  // const [tileImage, setTileImage] = useState(null);
+
+  // useEffect(() => {
+  //   const img = new window.Image();
+  //   img.src = 'water.png';
+  //   img.onload = () => setTileImage(img);
+  // }, []);
+
   // Draw the grid and center it
   useEffect(() => {
     const { width, height } = dimensions;
@@ -141,11 +151,14 @@ const IsometricCity = () => {
         
         for (let y = 0; y < gridHeight; y++) {
             const isWater = y >= coastY;
+            const isWaterWithRiver = isWater >= riverY;
             const color = isWater ? "#3498db" : "#2ecc71"; // Changed land color for contrast
+            // const color = isWaterWithRiver ? "#3498db" : "#2ecc71"; // Changed land color for contrast
 
             const screenX = (x - y) * (tileWidth / 2) * zoom + offsetX;
             const screenY = (x + y) * (tileHeight / 2) * zoom + offsetY;
             drawTile(ctx, screenX, screenY, color, zoom);
+            // drawTile(ctx, screenX, screenY, color, tileImage, zoom);
         }
     }
 
