@@ -128,6 +128,39 @@ const IsometricCity = () => {
   });
   const [zoom, setZoom] = useState(1);
   const [textures, setTextures] = useState({});
+  
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setDimensions({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Handle mouse wheel for zoom
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if (e.ctrlKey) return; // Allow browser zoom with ctrl+wheel
+      e.preventDefault();
+      const zoomStep = 0.1;
+      setZoom((z) => {
+        let next = z;
+        if (e.deltaY < 0) {
+          next = Math.min(z + zoomStep, 3);
+        } else {
+          next = Math.max(z - zoomStep, 0.5);
+        }
+        return next;
+      });
+    };
+    const canvas = canvasRef.current;
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+    return () => canvas.removeEventListener("wheel", handleWheel);
+  }, []);
 
   // Load textures
   useEffect(() => {
