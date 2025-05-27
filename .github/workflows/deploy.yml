@@ -2,8 +2,10 @@ name: Build and Deploy to GitHub Pages
 
 on:
   push:
-    branches:
-      - main  # branch you want to trigger the action
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,9 +31,19 @@ jobs:
     - name: Build project
       run: npm run build  # adjust based on build command
 
-    - name: Deploy to GitHub Pages
-      uses: peaceiris/actions-gh-pages@v3
+    #- name: Deploy to GitHub Pages
+    #  uses: peaceiris/actions-gh-pages@v3
+    #  with:
+    #    github_token: ${{ secrets.GITHUB_TOKEN }}
+    #    publish_dir: ./build  # build output folder
+    #    publish_branch: gh-pages
+    
+    - name: Upload GitHub Pages artifact
+      uses: actions/upload-pages-artifact@v3.0.1
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./build  # build output folder
-        publish_branch: gh-pages
+        # Artifact name
+        #name: # optional, default is github-pages
+        # Path of the directory containing the static assets.
+        path: ./build
+        #retention-days: # optional, default is 1
+            
