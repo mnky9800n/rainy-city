@@ -175,8 +175,10 @@ function generateElevationMap(width, height, coastline, seed = 42) {
 function getTileSlope(elevationMap, x, y) {
   const current = elevationMap[y][x];
   
-  // Water is always flat (any elevation <= 0)
-  if (current <= 0) return 'flat';
+  // Sea level water (elevation 0) is always flat
+  if (current === 0) return 'flat';
+  
+  // All other elevations (positive land, negative seafloor) can have slopes
   
   // In isometric view, the cardinal directions are actually diagonals:
   // Array y-1 = NE direction, x+1 = SE direction, y+1 = SW direction, x-1 = NW direction
@@ -227,17 +229,42 @@ function getTileSlope(elevationMap, x, y) {
 }
 
 // drawTile function with SimCity 2000 style elevation
-function drawTile(ctx, x, y, elevation, type, slope, zoom, textures) {
+function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMap) {
   ctx.save();
   
   // Calculate vertical offset based on elevation - much larger steps
   const elevationScale = 16; // Height of each elevation level in pixels (SimCity 2000 style)
   const yOffset = -elevation * elevationScale * zoom;
   
-  // Draw the foundation/cliff sides for land only
-  // Water should be transparent horizontally but show depth vertically
+  // For water tiles between sea level and seafloor, render nothing (fully transparent)
+  if (type === 'water' && elevation < 0) {
+    // Check if any neighbor is deeper - if so, this is mid-water and should be transparent
+    let hasDeeper = false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 0 && nx < elevationMap[0].length && ny >= 0 && ny < elevationMap.length) {
+          if (elevationMap[ny][nx] < elevation) {
+            hasDeeper = true;
+            break;
+          }
+        }
+      }
+      if (hasDeeper) break;
+    }
+    
+    // If this tile has deeper neighbors, it's mid-water - render nothing
+    if (hasDeeper) {
+      ctx.restore();
+      return; // Exit early, render nothing
+    }
+  }
+  
+  // Draw cliff sides only for land (not for underwater terrain)
   if (elevation > 0 && type !== 'water') {
-    const cliffColor = '#8B7355'; // Tan/brown cliff color
+    const cliffColor = '#8B7355'; // Tan/brown cliff color for land
     
     // Left cliff face
     ctx.fillStyle = adjustBrightness(cliffColor, -20);
@@ -561,7 +588,7 @@ const IsometricCity = () => {
     for (const tile of tiles) {
       const screenX = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
       const screenY = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
-      drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.slope, zoom, textures);
+      drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.slope, zoom, textures, elevationMap);
     }
   }, [dimensions, zoom, textures]);
 
