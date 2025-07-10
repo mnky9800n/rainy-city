@@ -3,8 +3,8 @@ import React, { useRef, useEffect, useState, useMemo } from "react";
 // Texture configuration - add/remove textures here
 const tileConfig = {
   water: {
-    color: "#2980b9",
-    texture: "./textures/water.png" // Path to your texture
+    color: "#2980b9"
+    // No texture for water - always use color
   },
   grass: {
     color: "#27ae60",
@@ -55,8 +55,10 @@ function generateElevationMap(width, height, coastline, seed = 42) {
     
     for (let y = 0; y < height; y++) {
       if (y >= coastY) {
-        // Water area - always level 0
-        elevationMap[y][x] = 0;
+        // Water area - gets deeper away from coast
+        const distanceFromCoast = y - coastY;
+        const depth = Math.min(Math.floor(distanceFromCoast / 5), 5); // Max depth of -5
+        elevationMap[y][x] = -depth;
       } else {
         // Land area - start at level 1, with gradual increase
         const distFromCoast = coastY - y;
@@ -130,15 +132,51 @@ function generateElevationMap(width, height, coastline, seed = 42) {
     }
   }
   
-  return smoothedMap;
+  // Apply median-like smoothing: if a tile has 5+ neighbors higher than itself, raise it by 1
+  const finalMap = Array(height).fill().map(() => Array(width).fill(0));
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const current = smoothedMap[y][x];
+      finalMap[y][x] = current;
+      
+      // Only apply to land (elevation > 0)
+      if (current > 0) {
+        let higherNeighbors = 0;
+        
+        // Check all 8 neighbors
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue; // Skip the center tile
+            
+            const nx = x + dx;
+            const ny = y + dy;
+            
+            if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+              if (smoothedMap[ny][nx] > current) {
+                higherNeighbors++;
+              }
+            }
+          }
+        }
+        
+        // If 5 or more neighbors are higher, raise this tile by 1
+        if (higherNeighbors >= 5) {
+          finalMap[y][x] = current + 1;
+        }
+      }
+    }
+  }
+  
+  return finalMap;
 }
 
 // Determine tile slope based on neighboring elevations
 function getTileSlope(elevationMap, x, y) {
   const current = elevationMap[y][x];
   
-  // Water is always flat
-  if (current === 0) return 'flat';
+  // Water is always flat (any elevation <= 0)
+  if (current <= 0) return 'flat';
   
   // In isometric view, the cardinal directions are actually diagonals:
   // Array y-1 = NE direction, x+1 = SE direction, y+1 = SW direction, x-1 = NW direction
@@ -196,7 +234,8 @@ function drawTile(ctx, x, y, elevation, type, slope, zoom, textures) {
   const elevationScale = 16; // Height of each elevation level in pixels (SimCity 2000 style)
   const yOffset = -elevation * elevationScale * zoom;
   
-  // Draw the foundation/cliff sides if elevated
+  // Draw the foundation/cliff sides for land only
+  // Water should be transparent horizontally but show depth vertically
   if (elevation > 0 && type !== 'water') {
     const cliffColor = '#8B7355'; // Tan/brown cliff color
     
@@ -219,6 +258,24 @@ function drawTile(ctx, x, y, elevation, type, slope, zoom, textures) {
     ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset);
     ctx.closePath();
     ctx.fill();
+  }
+  
+  // For water tiles, draw surface at sea level (transparent horizontally)
+  if (type === 'water') {
+    const seaLevel = 0;
+    const seaLevelOffset = -seaLevel * elevationScale * zoom;
+    
+    // Draw water surface
+    ctx.fillStyle = adjustBrightness('#2980b9', 20); // Lighter blue for surface
+    ctx.globalAlpha = 0.6; // Semi-transparent
+    ctx.beginPath();
+    ctx.moveTo(x, y + seaLevelOffset);
+    ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + seaLevelOffset);
+    ctx.lineTo(x, y + tileHeight * zoom + seaLevelOffset);
+    ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + seaLevelOffset);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1.0; // Reset transparency
   }
   
   // Draw the tile surface
@@ -290,10 +347,15 @@ function drawTile(ctx, x, y, elevation, type, slope, zoom, textures) {
     );
     ctx.restore();
   } else {
-    // Color with shading based on slope
+    // Color with shading based on slope or water depth
     let brightness = 0;
     if (slope === 'northeast' || slope === 'northwest') brightness = 10;
     if (slope === 'southeast' || slope === 'southwest') brightness = -10;
+    
+    // Make water darker based on depth
+    if (type === 'water' && elevation < 0) {
+      brightness = elevation * 8; // Deeper water is darker
+    }
     
     ctx.fillStyle = adjustBrightness(config.color, brightness);
     ctx.fill();
@@ -410,7 +472,7 @@ const IsometricCity = () => {
       const loadedTextures = {};
       
       await Promise.all(Object.entries(tileConfig).map(async ([key, cfg]) => {
-        if (cfg.texture) {
+        if (cfg.texture && key !== 'water') {
           const img = new window.Image();
           await new Promise(resolve => {
             img.onload = () => {
@@ -463,7 +525,7 @@ const IsometricCity = () => {
         const elevation = elevationMap[y][x];
         let type = "grass";
         
-        if (elevation === 0) {
+        if (elevation <= 0) {
           type = "water";
         } else {
           type = "grass"; // All land is grass
