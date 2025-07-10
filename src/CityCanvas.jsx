@@ -146,18 +146,34 @@ function getTileSlope(elevationMap, x, y) {
   const east = x < elevationMap[0].length - 1 ? elevationMap[y][x + 1] : current;
   const west = x > 0 ? elevationMap[y][x - 1] : current;
   
-  // SimCity 2000 style: use diagonal slopes to match isometric view
-  // Check diagonal neighbors
-  const northeast = (north > current || east > current) ? Math.max(north, east) : current;
-  const northwest = (north > current || west > current) ? Math.max(north, west) : current;
-  const southeast = (south > current || east > current) ? Math.max(south, east) : current;
-  const southwest = (south > current || west > current) ? Math.max(south, west) : current;
+  // Only create slopes where there's exactly 1 level difference
+  // and the slope connects properly to neighboring tiles
   
-  // Priority order for diagonal slopes
-  if (northeast > current) return 'northeast';
-  if (northwest > current) return 'northwest';
-  if (southeast > current) return 'southeast';
-  if (southwest > current) return 'southwest';
+  // Simple slope detection - only create slopes where exactly one neighbor is higher by 1
+  const higherByOne = [];
+  if (north === current + 1) higherByOne.push('north');
+  if (south === current + 1) higherByOne.push('south');
+  if (east === current + 1) higherByOne.push('east');
+  if (west === current + 1) higherByOne.push('west');
+  
+  // Only create slopes when we have clear elevation transitions
+  if (higherByOne.length === 0) return 'flat';
+  
+  // Determine slope based on which directions are higher
+  if (higherByOne.includes('north')) {
+    if (higherByOne.includes('east')) return 'northeast';
+    if (higherByOne.includes('west')) return 'northwest';
+    return 'northeast'; // Default north
+  }
+  
+  if (higherByOne.includes('south')) {
+    if (higherByOne.includes('east')) return 'southeast';
+    if (higherByOne.includes('west')) return 'southwest';
+    return 'southwest'; // Default south
+  }
+  
+  if (higherByOne.includes('east')) return 'northeast';
+  if (higherByOne.includes('west')) return 'northwest';
   
   return 'flat';
 }
@@ -465,8 +481,8 @@ const IsometricCity = () => {
       const depthA = a.x + a.y;
       const depthB = b.x + b.y;
       if (depthA !== depthB) return depthA - depthB;
-      // If same depth, render lower elevation first
-      return a.elevation - b.elevation;
+      // If same depth, render higher elevation first to avoid holes
+      return b.elevation - a.elevation;
     });
     
     // Render all tiles
