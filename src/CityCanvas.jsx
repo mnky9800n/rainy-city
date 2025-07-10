@@ -140,40 +140,50 @@ function getTileSlope(elevationMap, x, y) {
   // Water is always flat
   if (current === 0) return 'flat';
   
-  // Get neighbor elevations (default to current if out of bounds)
-  const north = y > 0 ? elevationMap[y - 1][x] : current;
-  const south = y < elevationMap.length - 1 ? elevationMap[y + 1][x] : current;
-  const east = x < elevationMap[0].length - 1 ? elevationMap[y][x + 1] : current;
-  const west = x > 0 ? elevationMap[y][x - 1] : current;
+  // In isometric view, the cardinal directions are actually diagonals:
+  // Array y-1 = NE direction, x+1 = SE direction, y+1 = SW direction, x-1 = NW direction
+  const northeast = y > 0 ? elevationMap[y - 1][x] : current;        // "north" in array = NE in isometric
+  const southeast = x < elevationMap[0].length - 1 ? elevationMap[y][x + 1] : current;  // "east" in array = SE in isometric  
+  const southwest = y < elevationMap.length - 1 ? elevationMap[y + 1][x] : current;     // "south" in array = SW in isometric
+  const northwest = x > 0 ? elevationMap[y][x - 1] : current;        // "west" in array = NW in isometric
   
   // Only create slopes where there's exactly 1 level difference
   // and the slope connects properly to neighboring tiles
   
-  // Simple slope detection - only create slopes where exactly one neighbor is higher by 1
+  // Check which isometric directions are higher by 1
   const higherByOne = [];
-  if (north === current + 1) higherByOne.push('north');
-  if (south === current + 1) higherByOne.push('south');
-  if (east === current + 1) higherByOne.push('east');
-  if (west === current + 1) higherByOne.push('west');
+  if (northeast === current + 1) higherByOne.push('northeast');
+  if (southeast === current + 1) higherByOne.push('southeast');
+  if (southwest === current + 1) higherByOne.push('southwest');
+  if (northwest === current + 1) higherByOne.push('northwest');
   
   // Only create slopes when we have clear elevation transitions
   if (higherByOne.length === 0) return 'flat';
   
-  // Determine slope based on which directions are higher
-  if (higherByOne.includes('north')) {
-    if (higherByOne.includes('east')) return 'northeast';
-    if (higherByOne.includes('west')) return 'northwest';
-    return 'northeast'; // Default north
+  // In your example: NW=1, NE=2, SE=2, SW=1
+  // X should slope from NW (low) to SE (high) = 'southeast' slope
+  
+  // Single direction slopes
+  if (higherByOne.length === 1) {
+    if (higherByOne.includes('northeast')) return 'northeast';
+    if (higherByOne.includes('southeast')) return 'southeast';
+    if (higherByOne.includes('southwest')) return 'southwest';
+    if (higherByOne.includes('northwest')) return 'northwest';
   }
   
-  if (higherByOne.includes('south')) {
-    if (higherByOne.includes('east')) return 'southeast';
-    if (higherByOne.includes('west')) return 'southwest';
-    return 'southwest'; // Default south
-  }
+  // Multiple directions - choose the appropriate slope
+  // If both NE and SE are higher, slope toward the east (SE direction)
+  if (higherByOne.includes('northeast') && higherByOne.includes('southeast')) return 'southeast';
+  // If both SE and SW are higher, slope toward the south (SW direction)  
+  if (higherByOne.includes('southeast') && higherByOne.includes('southwest')) return 'southwest';
+  // If both SW and NW are higher, slope toward the west (NW direction)
+  if (higherByOne.includes('southwest') && higherByOne.includes('northwest')) return 'northwest';
+  // If both NW and NE are higher, slope toward the north (NE direction)
+  if (higherByOne.includes('northwest') && higherByOne.includes('northeast')) return 'northeast';
   
-  if (higherByOne.includes('east')) return 'northeast';
-  if (higherByOne.includes('west')) return 'northwest';
+  // Opposite corners higher - this shouldn't happen with smooth terrain
+  if (higherByOne.includes('northeast') && higherByOne.includes('southwest')) return 'northeast';
+  if (higherByOne.includes('northwest') && higherByOne.includes('southeast')) return 'southeast';
   
   return 'flat';
 }
