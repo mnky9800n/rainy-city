@@ -211,19 +211,20 @@ function getTileSlope(elevationMap, x, y) {
     if (higherByOne.includes('northwest')) return 'northwest';
   }
   
-  // Multiple directions - choose the appropriate slope
-  // If both NE and SE are higher, slope toward the east (SE direction)
-  if (higherByOne.includes('northeast') && higherByOne.includes('southeast')) return 'southeast';
-  // If both SE and SW are higher, slope toward the south (SW direction)  
-  if (higherByOne.includes('southeast') && higherByOne.includes('southwest')) return 'southwest';
-  // If both SW and NW are higher, slope toward the west (NW direction)
-  if (higherByOne.includes('southwest') && higherByOne.includes('northwest')) return 'northwest';
-  // If both NW and NE are higher, slope toward the north (NE direction)
-  if (higherByOne.includes('northwest') && higherByOne.includes('northeast')) return 'northeast';
+  // Multiple directions - create corner fill tiles for adjacent corners
+  // If both NE and SE are higher, create east corner fill
+  if (higherByOne.includes('northeast') && higherByOne.includes('southeast')) return 'corner-east';
+  // If both SE and SW are higher, create south corner fill  
+  if (higherByOne.includes('southeast') && higherByOne.includes('southwest')) return 'corner-south';
+  // If both SW and NW are higher, create west corner fill
+  if (higherByOne.includes('southwest') && higherByOne.includes('northwest')) return 'corner-west';
+  // If both NW and NE are higher, create north corner fill
+  if (higherByOne.includes('northwest') && higherByOne.includes('northeast')) return 'corner-north';
   
-  // Opposite corners higher - this shouldn't happen with smooth terrain
-  if (higherByOne.includes('northeast') && higherByOne.includes('southwest')) return 'northeast';
-  if (higherByOne.includes('northwest') && higherByOne.includes('southeast')) return 'southeast';
+  // Opposite corners higher - create corner slopes
+  if (higherByOne.includes('northeast') && higherByOne.includes('southwest')) return 'corner-ne-sw';
+  if (higherByOne.includes('northwest') && higherByOne.includes('southeast')) return 'corner-nw-se';
+  
   
   return 'flat';
 }
@@ -343,6 +344,48 @@ function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMa
       case 'southwest':
         // Slope from NE (low) to SW (high)
         ctx.moveTo(x, y + yOffset); // North point (low)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
+        break;
+      case 'corner-ne-sw':
+        // Corner slope from NW and SE (low) to NE and SW (high)
+        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low)
+        break;
+      case 'corner-nw-se':
+        // Corner slope from NE and SW (low) to NW and SE (high)
+        ctx.moveTo(x, y + yOffset); // North point (low)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
+        break;
+      case 'corner-north':
+        // Complete diamond - North, East, West corners high, South corner low
+        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
+        break;
+      case 'corner-east':
+        // Complete diamond - North, East, South corners high, West corner low
+        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low)
+        break;
+      case 'corner-south':
+        // Complete diamond - East, South, West corners high, North corner low
+        ctx.moveTo(x, y + yOffset); // North point (low)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
+        break;
+      case 'corner-west':
+        // Complete diamond - North, West, South corners high, East corner low
+        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
         ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low)
         ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
         ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
