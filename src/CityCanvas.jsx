@@ -686,13 +686,29 @@ const IsometricCity = ({ debugMode = false }) => {
     const offsetY = height / 2 - gridPixelHeight / 2;
 
 
-    // Create slope matrix to track all tile slopes
-    const slopeMatrix = Array(gridHeight).fill().map(() => Array(gridWidth).fill('flat'));
+    // Create tile property arrays - vector approach
+    const isSlopedMap = Array(gridHeight).fill().map(() => Array(gridWidth).fill(false));
+    const slopeDirectionMap = Array(gridHeight).fill().map(() => Array(gridWidth).fill(null)); 
+    const tileTypeMap = Array(gridHeight).fill().map(() => Array(gridWidth).fill('land'));
     
-    // First pass: determine all slopes
+    // First pass: determine basic tile properties
     for (let x = 0; x < gridWidth; x++) {
       for (let y = 0; y < gridHeight; y++) {
-        slopeMatrix[y][x] = getTileSlope(elevationMap, x, y);
+        const elevation = elevationMap[y][x];
+        
+        // Determine tile type based on elevation
+        tileTypeMap[y][x] = elevation <= 0 ? 'ocean' : 'land';
+        
+        // Determine if tile should be sloped using original slope detection
+        const originalSlope = getTileSlope(elevationMap, x, y);
+        
+        if (originalSlope !== 'flat') {
+          isSlopedMap[y][x] = true;
+          slopeDirectionMap[y][x] = originalSlope;
+        } else {
+          isSlopedMap[y][x] = false;
+          slopeDirectionMap[y][x] = null;
+        }
       }
     }
     
@@ -700,49 +716,39 @@ const IsometricCity = ({ debugMode = false }) => {
     const tiles = [];
     const cityGrid = Array(gridHeight).fill().map(() => Array(gridWidth).fill(null));
     
-    // Second pass: determine base tile types and detect connecting tiles
+    // Second pass: create tiles using the vector properties
     for (let x = 0; x < gridWidth; x++) {
       for (let y = 0; y < gridHeight; y++) {
         const elevation = elevationMap[y][x];
-        let type = "grass";
+        const isSloped = isSlopedMap[y][x];
+        const slopeDirection = slopeDirectionMap[y][x];
+        const tileType = tileTypeMap[y][x];
         
-        if (elevation <= 0) {
-          type = "water";
+        // Convert tileType to visual type for rendering
+        let visualType;
+        if (tileType === 'ocean') {
+          visualType = "water";
         } else {
-          type = "grass"; // All land is grass
+          visualType = "grass"; // All land is grass for now
         }
         
-        let slope = slopeMatrix[y][x];
+        // Determine final slope for rendering
+        let finalSlope = isSloped ? slopeDirection : 'flat';
         
-        // Check for connecting tiles: flat tile with sloped neighbors at 90 degrees
-        if (slope === 'flat' && elevation > 0) {
-          // Get neighbor slopes
-          const neSlope = (y > 0) ? slopeMatrix[y - 1][x] : 'flat';
-          const seSlope = (x < gridWidth - 1) ? slopeMatrix[y][x + 1] : 'flat';
-          const swSlope = (y < gridHeight - 1) ? slopeMatrix[y + 1][x] : 'flat';
-          const nwSlope = (x > 0) ? slopeMatrix[y][x - 1] : 'flat';
-          
-          // Check for 90-degree adjacent sloped neighbors
-          const isSloped = (s) => s !== 'flat';
-          
-          if (isSloped(neSlope) && isSloped(seSlope)) {
-            slope = 'east'; // Slope toward east (between NE and SE)
-          } else if (isSloped(seSlope) && isSloped(swSlope)) {
-            slope = 'south'; // Slope toward south (between SE and SW)
-          } else if (isSloped(swSlope) && isSloped(nwSlope)) {
-            slope = 'west'; // Slope toward west (between SW and NW)
-          } else if (isSloped(nwSlope) && isSloped(neSlope)) {
-            slope = 'north'; // Slope toward north (between NW and NE)
-          }
-        }
-        
-        cityGrid[y][x] = { type, elevation, slope };
-        tiles.push({ x, y, elevation, type, slope });
+        cityGrid[y][x] = { type: visualType, elevation, slope: finalSlope };
+        tiles.push({ x, y, elevation, type: visualType, slope: finalSlope });
       }
     }
     
-    // Store slope matrix for debug tool
-    setCurrentSlopeMatrix(slopeMatrix);
+    // Create final slope matrix for debug tool
+    const finalSlopeMatrix = Array(gridHeight).fill().map(() => Array(gridWidth).fill('flat'));
+    for (let i = 0; i < tiles.length; i++) {
+      const tile = tiles[i];
+      finalSlopeMatrix[tile.y][tile.x] = tile.slope;
+    }
+    
+    // Store final slope matrix for debug tool
+    setCurrentSlopeMatrix(finalSlopeMatrix);
     
     // No roads or buildings - just the terrain
     
@@ -821,7 +827,7 @@ const IsometricCity = ({ debugMode = false }) => {
       if (tileX >= 0 && tileX < gridWidth && tileY >= 0 && tileY < gridHeight) {
         const elevation = elevationMap[tileY][tileX];
         const slope = currentSlopeMatrix ? currentSlopeMatrix[tileY][tileX] : 'unknown';
-        console.log(`Tile location X:${tileX}, Y:${tileY}, elevation:${elevation}, slope:${slope}`);
+        console.log(`Tile vector [${tileX},${tileY}]: elevation=${elevation}, slope=${slope}`);
       } else {
         console.log(`Click outside grid bounds: X:${tileX}, Y:${tileY}`);
       }
