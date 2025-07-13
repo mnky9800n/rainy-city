@@ -219,15 +219,19 @@ function getTileSlope(elevationMap, x, y) {
     if (higherByOne.includes('northwest')) return 'northwest';
   }
   
-  // Multiple directions - create corner fill tiles for adjacent corners
-  // If both NE and SE are higher, create east corner fill
-  if (higherByOne.includes('northeast') && higherByOne.includes('southeast')) return 'corner-east';
-  // If both SE and SW are higher, create south corner fill  
-  if (higherByOne.includes('southeast') && higherByOne.includes('southwest')) return 'corner-south';
-  // If both SW and NW are higher, create west corner fill
-  if (higherByOne.includes('southwest') && higherByOne.includes('northwest')) return 'corner-west';
-  // If both NW and NE are higher, create north corner fill
-  if (higherByOne.includes('northwest') && higherByOne.includes('northeast')) return 'corner-north';
+  
+  // Multiple directions - only create corner fill tiles when we have exactly 2 higher neighbors
+  // and no lower neighbors (true corner situations)
+  if (higherByOne.length === 2 && lowerByOne.length === 0) {
+    // If both NE and SE are higher, create east corner fill
+    if (higherByOne.includes('northeast') && higherByOne.includes('southeast')) return 'corner-east';
+    // If both SE and SW are higher, create south corner fill  
+    if (higherByOne.includes('southeast') && higherByOne.includes('southwest')) return 'corner-south';
+    // If both SW and NW are higher, create west corner fill
+    if (higherByOne.includes('southwest') && higherByOne.includes('northwest')) return 'corner-west';
+    // If both NW and NE are higher, create north corner fill
+    if (higherByOne.includes('northwest') && higherByOne.includes('northeast')) return 'corner-north';
+  }
   
   // Opposite corners higher - create corner slopes
   if (higherByOne.includes('northeast') && higherByOne.includes('southwest')) return 'corner-ne-sw';
@@ -665,6 +669,8 @@ const IsometricCity = ({ debugMode = false }) => {
     const [coastline] = useState(() => generateCoastline(gridWidth));
     // Generate elevation map based on coastline
     const [elevationMap] = useState(() => generateElevationMap(gridWidth, gridHeight, coastline, 42));
+    const [currentSlopeMatrix, setCurrentSlopeMatrix] = useState(null);
+  const [hoveredTile, setHoveredTile] = useState(null);
     const [riverPath] = useMemo(() => generateRiverPath(gridWidth, gridHeight, 123), []);
 
   // rendering useEffect
@@ -680,11 +686,21 @@ const IsometricCity = ({ debugMode = false }) => {
     const offsetY = height / 2 - gridPixelHeight / 2;
 
 
+    // Create slope matrix to track all tile slopes
+    const slopeMatrix = Array(gridHeight).fill().map(() => Array(gridWidth).fill('flat'));
+    
+    // First pass: determine all slopes
+    for (let x = 0; x < gridWidth; x++) {
+      for (let y = 0; y < gridHeight; y++) {
+        slopeMatrix[y][x] = getTileSlope(elevationMap, x, y);
+      }
+    }
+    
     // Create a sorted array of tiles by depth for proper rendering order
     const tiles = [];
     const cityGrid = Array(gridHeight).fill().map(() => Array(gridWidth).fill(null));
     
-    // First pass: determine base tile types
+    // Second pass: determine base tile types and detect connecting tiles
     for (let x = 0; x < gridWidth; x++) {
       for (let y = 0; y < gridHeight; y++) {
         const elevation = elevationMap[y][x];
@@ -696,12 +712,37 @@ const IsometricCity = ({ debugMode = false }) => {
           type = "grass"; // All land is grass
         }
         
-        const slope = getTileSlope(elevationMap, x, y);
+        let slope = slopeMatrix[y][x];
+        
+        // Check for connecting tiles: flat tile with sloped neighbors at 90 degrees
+        if (slope === 'flat' && elevation > 0) {
+          // Get neighbor slopes
+          const neSlope = (y > 0) ? slopeMatrix[y - 1][x] : 'flat';
+          const seSlope = (x < gridWidth - 1) ? slopeMatrix[y][x + 1] : 'flat';
+          const swSlope = (y < gridHeight - 1) ? slopeMatrix[y + 1][x] : 'flat';
+          const nwSlope = (x > 0) ? slopeMatrix[y][x - 1] : 'flat';
+          
+          // Check for 90-degree adjacent sloped neighbors
+          const isSloped = (s) => s !== 'flat';
+          
+          if (isSloped(neSlope) && isSloped(seSlope)) {
+            slope = 'east'; // Slope toward east (between NE and SE)
+          } else if (isSloped(seSlope) && isSloped(swSlope)) {
+            slope = 'south'; // Slope toward south (between SE and SW)
+          } else if (isSloped(swSlope) && isSloped(nwSlope)) {
+            slope = 'west'; // Slope toward west (between SW and NW)
+          } else if (isSloped(nwSlope) && isSloped(neSlope)) {
+            slope = 'north'; // Slope toward north (between NW and NE)
+          }
+        }
         
         cityGrid[y][x] = { type, elevation, slope };
         tiles.push({ x, y, elevation, type, slope });
       }
     }
+    
+    // Store slope matrix for debug tool
+    setCurrentSlopeMatrix(slopeMatrix);
     
     // No roads or buildings - just the terrain
     
@@ -711,6 +752,7 @@ const IsometricCity = ({ debugMode = false }) => {
     if (elevationMap[centerY][centerX] > 0) {
       tiles.push({ x: centerX, y: centerY, elevation: elevationMap[centerY][centerX], type: "marker", slope: "north" });
     }
+    
     
     
     // Sort tiles for proper rendering order (back to front)
@@ -727,8 +769,29 @@ const IsometricCity = ({ debugMode = false }) => {
       const screenX = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
       const screenY = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
       drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.slope, zoom, textures, elevationMap, tile.x, tile.y);
+      
+      // Draw yellow highlight for hovered tile in debug mode
+      if (debugMode && hoveredTile && tile.x === hoveredTile.x && tile.y === hoveredTile.y) {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = 'yellow';
+        
+        // Calculate vertical offset for elevation
+        const elevationScale = 16;
+        const yOffset = -tile.elevation * elevationScale * zoom;
+        
+        // Draw yellow diamond over the tile
+        ctx.beginPath();
+        ctx.moveTo(screenX, screenY + yOffset);
+        ctx.lineTo(screenX + (tileWidth / 2) * zoom, screenY + (tileHeight / 2) * zoom + yOffset);
+        ctx.lineTo(screenX, screenY + tileHeight * zoom + yOffset);
+        ctx.lineTo(screenX - (tileWidth / 2) * zoom, screenY + (tileHeight / 2) * zoom + yOffset);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
     }
-  }, [dimensions, zoom, textures]);
+  }, [dimensions, zoom, textures, debugMode, hoveredTile]);
 
   // Handle debug mode clicks - moved after elevationMap is available
   useEffect(() => {
@@ -757,16 +820,48 @@ const IsometricCity = ({ debugMode = false }) => {
       // Check if coordinates are within bounds
       if (tileX >= 0 && tileX < gridWidth && tileY >= 0 && tileY < gridHeight) {
         const elevation = elevationMap[tileY][tileX];
-        console.log(`Tile location X:${tileX}, Y:${tileY}, elevation:${elevation}`);
+        const slope = currentSlopeMatrix ? currentSlopeMatrix[tileY][tileX] : 'unknown';
+        console.log(`Tile location X:${tileX}, Y:${tileY}, elevation:${elevation}, slope:${slope}`);
       } else {
         console.log(`Click outside grid bounds: X:${tileX}, Y:${tileY}`);
       }
     };
     
+    const handleMouseMove = (e) => {
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      
+      // Convert screen coordinates to tile coordinates
+      const { width, height } = dimensions;
+      const offsetX = width / 2;
+      const offsetY = height / 2 - ((gridWidth + gridHeight) * (tileHeight / 2) * zoom) / 2;
+      
+      // Adjust for offset
+      const relativeX = screenX - offsetX;
+      const relativeY = screenY - offsetY;
+      
+      // Convert from screen to isometric tile coordinates
+      const tileX = Math.round((relativeX / (tileWidth / 2) + relativeY / (tileHeight / 2)) / (2 * zoom));
+      const tileY = Math.round((relativeY / (tileHeight / 2) - relativeX / (tileWidth / 2)) / (2 * zoom));
+      
+      // Check if coordinates are within bounds and update hover highlight
+      if (tileX >= 0 && tileX < gridWidth && tileY >= 0 && tileY < gridHeight) {
+        setHoveredTile({ x: tileX, y: tileY });
+      } else {
+        setHoveredTile(null);
+      }
+    };
+    
     const canvas = canvasRef.current;
     canvas.addEventListener("click", handleClick);
-    return () => canvas.removeEventListener("click", handleClick);
-  }, [debugMode, dimensions, zoom, elevationMap]);
+    canvas.addEventListener("mousemove", handleMouseMove);
+    return () => {
+      canvas.removeEventListener("click", handleClick);
+      canvas.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [debugMode, dimensions, zoom, elevationMap, currentSlopeMatrix]);
 
   return (
     <canvas
