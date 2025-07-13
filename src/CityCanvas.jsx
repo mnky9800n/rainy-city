@@ -175,6 +175,7 @@ function generateElevationMap(width, height, coastline, seed = 42) {
 function getTileSlope(elevationMap, x, y) {
   const current = elevationMap[y][x];
   
+  
   // Sea level water (elevation 0) is always flat
   if (current === 0) return 'flat';
   
@@ -197,8 +198,15 @@ function getTileSlope(elevationMap, x, y) {
   if (southwest === current + 1) higherByOne.push('southwest');
   if (northwest === current + 1) higherByOne.push('northwest');
   
+  // Check which isometric directions are lower by 1
+  const lowerByOne = [];
+  if (northeast === current - 1) lowerByOne.push('northeast');
+  if (southeast === current - 1) lowerByOne.push('southeast');
+  if (southwest === current - 1) lowerByOne.push('southwest');
+  if (northwest === current - 1) lowerByOne.push('northwest');
+  
   // Only create slopes when we have clear elevation transitions
-  if (higherByOne.length === 0) return 'flat';
+  if (higherByOne.length === 0 && lowerByOne.length === 0) return 'flat';
   
   // In your example: NW=1, NE=2, SE=2, SW=1
   // X should slope from NW (low) to SE (high) = 'southeast' slope
@@ -226,11 +234,40 @@ function getTileSlope(elevationMap, x, y) {
   if (higherByOne.includes('northwest') && higherByOne.includes('southeast')) return 'corner-nw-se';
   
   
+
+  // Connecting tile detection: flat tile with 2 higher neighbors at 90 degrees
+  if (higherByOne.length === 0 && lowerByOne.length === 0) {
+    // Find neighbors that are higher (sloped areas)
+    const higherNeighbors = [];
+    
+    if (northeast > current) higherNeighbors.push('northeast');
+    if (southeast > current) higherNeighbors.push('southeast');
+    if (southwest > current) higherNeighbors.push('southwest'); 
+    if (northwest > current) higherNeighbors.push('northwest');
+    
+    // If we have at least 2 higher neighbors that are 90 degrees apart
+    if (higherNeighbors.length >= 2) {
+      // Check for 90-degree adjacency patterns
+      if (higherNeighbors.includes('northeast') && higherNeighbors.includes('southeast')) {
+        return 'connect-northeast'; // Slope toward the corner between NE and SE
+      }
+      if (higherNeighbors.includes('southeast') && higherNeighbors.includes('southwest')) {
+        return 'connect-southeast'; // Slope toward the corner between SE and SW
+      }
+      if (higherNeighbors.includes('southwest') && higherNeighbors.includes('northwest')) {
+        return 'connect-southwest'; // Slope toward the corner between SW and NW
+      }
+      if (higherNeighbors.includes('northwest') && higherNeighbors.includes('northeast')) {
+        return 'connect-northwest'; // Slope toward the corner between NW and NE
+      }
+    }
+  }
+
   return 'flat';
 }
 
 // drawTile function with SimCity 2000 style elevation
-function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMap) {
+function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMap, gridX, gridY) {
   ctx.save();
   
   // Calculate vertical offset based on elevation - much larger steps
@@ -244,8 +281,8 @@ function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMa
     for (let dy = -1; dy <= 1; dy++) {
       for (let dx = -1; dx <= 1; dx++) {
         if (dx === 0 && dy === 0) continue;
-        const nx = x + dx;
-        const ny = y + dy;
+        const nx = gridX + dx;
+        const ny = gridY + dy;
         if (nx >= 0 && nx < elevationMap[0].length && ny >= 0 && ny < elevationMap.length) {
           if (elevationMap[ny][nx] < elevation) {
             hasDeeper = true;
@@ -327,6 +364,34 @@ function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMa
         ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low)
         ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low)
         break;
+      case 'north':
+        // Slope from south (low) at current elevation to north (high) at +1 elevation
+        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high - at elevation+1)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low - at current elevation)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low - at current elevation)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low - at current elevation)
+        break;
+      case 'south':
+        // Slope from north (low) at current elevation to south (high) at +1 elevation
+        ctx.moveTo(x, y + yOffset); // North point (low - at current elevation)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low - at current elevation)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high - at elevation+1)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low - at current elevation)
+        break;
+      case 'east':
+        // Slope from west (low) at current elevation to east (high) at +1 elevation
+        ctx.moveTo(x, y + yOffset); // North point (low - at current elevation)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high - at elevation+1)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low - at current elevation)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low - at current elevation)
+        break;
+      case 'west':
+        // Slope from east (low) at current elevation to west (high) at +1 elevation
+        ctx.moveTo(x, y + yOffset); // North point (low - at current elevation)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low - at current elevation)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low - at current elevation)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high - at elevation+1)
+        break;
       case 'northwest':
         // Slope from SE (low) to NW (high)
         ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
@@ -388,6 +453,35 @@ function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMa
         ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
         ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low)
         ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
+        break;
+      case 'connect-northeast':
+        // Connecting tile - flat on SW side, slopes up along diagonal from SE to NW corners toward NE
+        // The tile is split diagonally: SW half is flat at low elevation, NE half slopes up
+        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (mid - on diagonal)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (mid - on diagonal)
+        break;
+      case 'connect-southeast':
+        // Connecting tile - flat on NW side, slopes up along diagonal from NE to SW corners toward SE
+        ctx.moveTo(x, y + yOffset); // North point (mid - on diagonal)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (mid - on diagonal)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low)
+        break;
+      case 'connect-southwest':
+        // Connecting tile - flat on NE side, slopes up along diagonal from NW to SE corners toward SW
+        ctx.moveTo(x, y + yOffset); // North point (low)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (mid - on diagonal)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
+        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (mid - on diagonal)
+        break;
+      case 'connect-northwest':
+        // Connecting tile - flat on SE side, slopes up along diagonal from SW to NE corners toward NW
+        ctx.moveTo(x, y + yOffset); // North point (mid - on diagonal)
+        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low)
+        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (mid - on diagonal)
         ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
         break;
       default:
@@ -494,7 +588,7 @@ function generateRiverPath(gridWidth, gridHeight, seed = 42) {
   return river;
 }
 
-const IsometricCity = () => {
+const IsometricCity = ({ debugMode = false }) => {
   const canvasRef = useRef(null);
   const [dimensions, setDimensions] = useState({
     width: window.innerWidth,
@@ -535,6 +629,7 @@ const IsometricCity = () => {
     canvas.addEventListener("wheel", handleWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", handleWheel);
   }, []);
+
 
   // Load textures
   useEffect(() => {
@@ -614,9 +709,9 @@ const IsometricCity = () => {
     const centerX = Math.floor(gridWidth / 2);
     const centerY = Math.floor(gridHeight / 2);
     if (elevationMap[centerY][centerX] > 0) {
-      const centerSlope = getTileSlope(elevationMap, centerX, centerY);
-      tiles.push({ x: centerX, y: centerY, elevation: elevationMap[centerY][centerX], type: "marker", slope: centerSlope });
+      tiles.push({ x: centerX, y: centerY, elevation: elevationMap[centerY][centerX], type: "marker", slope: "north" });
     }
+    
     
     // Sort tiles for proper rendering order (back to front)
     tiles.sort((a, b) => {
@@ -631,9 +726,47 @@ const IsometricCity = () => {
     for (const tile of tiles) {
       const screenX = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
       const screenY = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
-      drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.slope, zoom, textures, elevationMap);
+      drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.slope, zoom, textures, elevationMap, tile.x, tile.y);
     }
   }, [dimensions, zoom, textures]);
+
+  // Handle debug mode clicks - moved after elevationMap is available
+  useEffect(() => {
+    if (!debugMode) return;
+    
+    const handleClick = (e) => {
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const screenX = e.clientX - rect.left;
+      const screenY = e.clientY - rect.top;
+      
+      // Convert screen coordinates to tile coordinates
+      const { width, height } = dimensions;
+      const offsetX = width / 2;
+      const offsetY = height / 2 - ((gridWidth + gridHeight) * (tileHeight / 2) * zoom) / 2;
+      
+      // Adjust for offset
+      const relativeX = screenX - offsetX;
+      const relativeY = screenY - offsetY;
+      
+      // Convert from screen to isometric tile coordinates
+      // This is the inverse of the isometric projection formula
+      const tileX = Math.round((relativeX / (tileWidth / 2) + relativeY / (tileHeight / 2)) / (2 * zoom));
+      const tileY = Math.round((relativeY / (tileHeight / 2) - relativeX / (tileWidth / 2)) / (2 * zoom));
+      
+      // Check if coordinates are within bounds
+      if (tileX >= 0 && tileX < gridWidth && tileY >= 0 && tileY < gridHeight) {
+        const elevation = elevationMap[tileY][tileX];
+        console.log(`Tile location X:${tileX}, Y:${tileY}, elevation:${elevation}`);
+      } else {
+        console.log(`Click outside grid bounds: X:${tileX}, Y:${tileY}`);
+      }
+    };
+    
+    const canvas = canvasRef.current;
+    canvas.addEventListener("click", handleClick);
+    return () => canvas.removeEventListener("click", handleClick);
+  }, [debugMode, dimensions, zoom, elevationMap]);
 
   return (
     <canvas
@@ -649,7 +782,7 @@ const IsometricCity = () => {
         left: 0,
         zIndex: 1,
         background: "#222",
-        cursor: "grab"
+        cursor: debugMode ? "crosshair" : "grab"
       }}
     />
   );
