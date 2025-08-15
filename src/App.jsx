@@ -77,6 +77,7 @@ const DraggableWindow = ({ children, initialPosition = { x: 100, y: 100 } }) => 
 const App = () => {
   const rainRef = useRef(null);
   const cityRef = useRef(null);
+  const [debugMode, setDebugMode] = useState(false);
 
   const playSounds = () => {
     rainRef.current.play();
@@ -90,7 +91,7 @@ const App = () => {
 
   return (
     <div className="relative w-full h-full bg-gray-900 min-h-screen">
-      <IsometricCity />
+      <IsometricCity debugMode={debugMode} />
       <RainCanvas />
 
       <audio ref={rainRef} src="./rain.mp3" loop />
@@ -134,6 +135,25 @@ const App = () => {
             onChange={e => (cityRef.current.volume = e.target.value)}
             className="w-full"
           />
+        </div>
+        
+        <div className="mt-4 pt-4 border-t border-gray-600">
+          <label className="block text-white text-sm mb-2">Debug Tools</label>
+          <button
+            onClick={() => setDebugMode(!debugMode)}
+            className={`px-4 py-2 rounded flex items-center gap-2 ${
+              debugMode 
+                ? "bg-red-600 text-white" 
+                : "bg-gray-700 text-white"
+            }`}
+          >
+            <div 
+              className={`w-2 h-2 rounded-full ${
+                debugMode ? "bg-red-400" : "bg-gray-400"
+              }`}
+            />
+            Get Coordinates
+          </button>
         </div>
       </DraggableWindow>
     </div>
