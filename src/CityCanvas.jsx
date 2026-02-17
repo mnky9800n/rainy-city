@@ -171,107 +171,48 @@ function generateElevationMap(width, height, coastline, seed = 42) {
   return finalMap;
 }
 
-// Determine tile slope based on neighboring elevations
-function getTileSlope(elevationMap, x, y) {
+// Compute corner heights for smooth slope transitions.
+// Each diamond corner is shared by 4 tiles: the current tile, two cardinal
+// neighbors, and one diagonal neighbor. A corner must be raised if ANY of the
+// 4 tiles sharing it is 1 level higher, otherwise adjacent tiles disagree on
+// the shared corner height and gaps appear.
+function getTileCornerHeights(elevationMap, x, y) {
   const current = elevationMap[y][x];
-  
-  
-  // Sea level water (elevation 0) is always flat
-  if (current === 0) return 'flat';
-  
-  // All other elevations (positive land, negative seafloor) can have slopes
-  
-  // In isometric view, the cardinal directions are actually diagonals:
-  // Array y-1 = NE direction, x+1 = SE direction, y+1 = SW direction, x-1 = NW direction
-  const northeast = y > 0 ? elevationMap[y - 1][x] : current;        // "north" in array = NE in isometric
-  const southeast = x < elevationMap[0].length - 1 ? elevationMap[y][x + 1] : current;  // "east" in array = SE in isometric  
-  const southwest = y < elevationMap.length - 1 ? elevationMap[y + 1][x] : current;     // "south" in array = SW in isometric
-  const northwest = x > 0 ? elevationMap[y][x - 1] : current;        // "west" in array = NW in isometric
-  
-  // Only create slopes where there's exactly 1 level difference
-  // and the slope connects properly to neighboring tiles
-  
-  // Check which isometric directions are higher by 1
-  const higherByOne = [];
-  if (northeast === current + 1) higherByOne.push('northeast');
-  if (southeast === current + 1) higherByOne.push('southeast');
-  if (southwest === current + 1) higherByOne.push('southwest');
-  if (northwest === current + 1) higherByOne.push('northwest');
-  
-  // Check which isometric directions are lower by 1
-  const lowerByOne = [];
-  if (northeast === current - 1) lowerByOne.push('northeast');
-  if (southeast === current - 1) lowerByOne.push('southeast');
-  if (southwest === current - 1) lowerByOne.push('southwest');
-  if (northwest === current - 1) lowerByOne.push('northwest');
-  
-  // Only create slopes when we have clear elevation transitions
-  if (higherByOne.length === 0 && lowerByOne.length === 0) return 'flat';
-  
-  // In your example: NW=1, NE=2, SE=2, SW=1
-  // X should slope from NW (low) to SE (high) = 'southeast' slope
-  
-  // Single direction slopes
-  if (higherByOne.length === 1) {
-    if (higherByOne.includes('northeast')) return 'northeast';
-    if (higherByOne.includes('southeast')) return 'southeast';
-    if (higherByOne.includes('southwest')) return 'southwest';
-    if (higherByOne.includes('northwest')) return 'northwest';
-  }
-  
-  
-  // Multiple directions - only create corner fill tiles when we have exactly 2 higher neighbors
-  // and no lower neighbors (true corner situations)
-  if (higherByOne.length === 2 && lowerByOne.length === 0) {
-    // If both NE and SE are higher, create east corner fill
-    if (higherByOne.includes('northeast') && higherByOne.includes('southeast')) return 'corner-east';
-    // If both SE and SW are higher, create south corner fill  
-    if (higherByOne.includes('southeast') && higherByOne.includes('southwest')) return 'corner-south';
-    // If both SW and NW are higher, create west corner fill
-    if (higherByOne.includes('southwest') && higherByOne.includes('northwest')) return 'corner-west';
-    // If both NW and NE are higher, create north corner fill
-    if (higherByOne.includes('northwest') && higherByOne.includes('northeast')) return 'corner-north';
-  }
-  
-  // Opposite corners higher - create corner slopes
-  if (higherByOne.includes('northeast') && higherByOne.includes('southwest')) return 'corner-ne-sw';
-  if (higherByOne.includes('northwest') && higherByOne.includes('southeast')) return 'corner-nw-se';
-  
-  
 
-  // Connecting tile detection: flat tile with 2 higher neighbors at 90 degrees
-  if (higherByOne.length === 0 && lowerByOne.length === 0) {
-    // Find neighbors that are higher (sloped areas)
-    const higherNeighbors = [];
-    
-    if (northeast > current) higherNeighbors.push('northeast');
-    if (southeast > current) higherNeighbors.push('southeast');
-    if (southwest > current) higherNeighbors.push('southwest'); 
-    if (northwest > current) higherNeighbors.push('northwest');
-    
-    // If we have at least 2 higher neighbors that are 90 degrees apart
-    if (higherNeighbors.length >= 2) {
-      // Check for 90-degree adjacency patterns
-      if (higherNeighbors.includes('northeast') && higherNeighbors.includes('southeast')) {
-        return 'connect-northeast'; // Slope toward the corner between NE and SE
-      }
-      if (higherNeighbors.includes('southeast') && higherNeighbors.includes('southwest')) {
-        return 'connect-southeast'; // Slope toward the corner between SE and SW
-      }
-      if (higherNeighbors.includes('southwest') && higherNeighbors.includes('northwest')) {
-        return 'connect-southwest'; // Slope toward the corner between SW and NW
-      }
-      if (higherNeighbors.includes('northwest') && higherNeighbors.includes('northeast')) {
-        return 'connect-northwest'; // Slope toward the corner between NW and NE
-      }
-    }
-  }
+  // Sea level water is always flat
+  if (current === 0) return { n: 0, e: 0, s: 0, w: 0 };
 
-  return 'flat';
+  const h = elevationMap.length;
+  const w = elevationMap[0].length;
+  const c1 = current + 1;
+
+  // Cardinal neighbors (in isometric space)
+  const ne = y > 0 ? elevationMap[y - 1][x] : current;
+  const se = x < w - 1 ? elevationMap[y][x + 1] : current;
+  const sw = y < h - 1 ? elevationMap[y + 1][x] : current;
+  const nw = x > 0 ? elevationMap[y][x - 1] : current;
+
+  // Diagonal neighbors
+  const dNW = (y > 0 && x > 0) ? elevationMap[y - 1][x - 1] : current;
+  const dNE = (y > 0 && x < w - 1) ? elevationMap[y - 1][x + 1] : current;
+  const dSE = (y < h - 1 && x < w - 1) ? elevationMap[y + 1][x + 1] : current;
+  const dSW = (y < h - 1 && x > 0) ? elevationMap[y + 1][x - 1] : current;
+
+  // Each corner: raise if any of its 3 neighbor tiles (2 cardinal + 1 diagonal) is higher
+  //   North corner: NE, NW, diagonal[y-1][x-1]
+  //   East corner:  NE, SE, diagonal[y-1][x+1]
+  //   South corner: SE, SW, diagonal[y+1][x+1]
+  //   West corner:  NW, SW, diagonal[y+1][x-1]
+  return {
+    n: (ne === c1 || nw === c1 || dNW === c1) ? 1 : 0,
+    e: (ne === c1 || se === c1 || dNE === c1) ? 1 : 0,
+    s: (se === c1 || sw === c1 || dSE === c1) ? 1 : 0,
+    w: (nw === c1 || sw === c1 || dSW === c1) ? 1 : 0,
+  };
 }
 
 // drawTile function with SimCity 2000 style elevation
-function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMap, gridX, gridY) {
+function drawTile(ctx, x, y, elevation, type, corners, zoom, textures, elevationMap, gridX, gridY) {
   ctx.save();
   
   // Calculate vertical offset based on elevation - much larger steps
@@ -307,7 +248,7 @@ function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMa
   // Draw cliff sides only for land (not for underwater terrain)
   if (elevation > 0 && type !== 'water') {
     const cliffColor = '#8B7355'; // Tan/brown cliff color for land
-    
+
     // Left cliff face
     ctx.fillStyle = adjustBrightness(cliffColor, -20);
     ctx.beginPath();
@@ -317,7 +258,7 @@ function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMa
     ctx.lineTo(x, y + tileHeight * zoom + yOffset);
     ctx.closePath();
     ctx.fill();
-    
+
     // Right cliff face
     ctx.fillStyle = adjustBrightness(cliffColor, -40);
     ctx.beginPath();
@@ -349,152 +290,20 @@ function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMa
   
   // Draw the tile surface
   ctx.beginPath();
-  
-  if (slope === 'flat' || type === 'water') {
-    // Flat tile
+
+  if (type === 'water') {
+    // Water tiles are always flat
     ctx.moveTo(x, y + yOffset);
     ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset);
     ctx.lineTo(x, y + tileHeight * zoom + yOffset);
     ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset);
   } else {
-    // Sloped tile - create angled surface
-    const slopeHeight = elevationScale * zoom;
-    
-    switch(slope) {
-      case 'northeast':
-        // Slope from SW (low) to NE (high)
-        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low)
-        break;
-      case 'north':
-        // Slope from south (low) at current elevation to north (high) at +1 elevation
-        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high - at elevation+1)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low - at current elevation)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low - at current elevation)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low - at current elevation)
-        break;
-      case 'south':
-        // Slope from north (low) at current elevation to south (high) at +1 elevation
-        ctx.moveTo(x, y + yOffset); // North point (low - at current elevation)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low - at current elevation)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high - at elevation+1)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low - at current elevation)
-        break;
-      case 'east':
-        // Slope from west (low) at current elevation to east (high) at +1 elevation
-        ctx.moveTo(x, y + yOffset); // North point (low - at current elevation)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high - at elevation+1)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low - at current elevation)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low - at current elevation)
-        break;
-      case 'west':
-        // Slope from east (low) at current elevation to west (high) at +1 elevation
-        ctx.moveTo(x, y + yOffset); // North point (low - at current elevation)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low - at current elevation)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low - at current elevation)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high - at elevation+1)
-        break;
-      case 'northwest':
-        // Slope from SE (low) to NW (high)
-        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
-        break;
-      case 'southeast':
-        // Slope from NW (low) to SE (high)
-        ctx.moveTo(x, y + yOffset); // North point (low)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low)
-        break;
-      case 'southwest':
-        // Slope from NE (low) to SW (high)
-        ctx.moveTo(x, y + yOffset); // North point (low)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
-        break;
-      case 'corner-ne-sw':
-        // Corner slope from NW and SE (low) to NE and SW (high)
-        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low)
-        break;
-      case 'corner-nw-se':
-        // Corner slope from NE and SW (low) to NW and SE (high)
-        ctx.moveTo(x, y + yOffset); // North point (low)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
-        break;
-      case 'corner-north':
-        // Complete diamond - North, East, West corners high, South corner low
-        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
-        break;
-      case 'corner-east':
-        // Complete diamond - North, East, South corners high, West corner low
-        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low)
-        break;
-      case 'corner-south':
-        // Complete diamond - East, South, West corners high, North corner low
-        ctx.moveTo(x, y + yOffset); // North point (low)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
-        break;
-      case 'corner-west':
-        // Complete diamond - North, West, South corners high, East corner low
-        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
-        break;
-      case 'connect-northeast':
-        // Connecting tile - flat on SW side, slopes up along diagonal from SE to NW corners toward NE
-        // The tile is split diagonally: SW half is flat at low elevation, NE half slopes up
-        ctx.moveTo(x, y + yOffset - slopeHeight); // North point (high)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (mid - on diagonal)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (low)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (mid - on diagonal)
-        break;
-      case 'connect-southeast':
-        // Connecting tile - flat on NW side, slopes up along diagonal from NE to SW corners toward SE
-        ctx.moveTo(x, y + yOffset); // North point (mid - on diagonal)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // East point (high)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (mid - on diagonal)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (low)
-        break;
-      case 'connect-southwest':
-        // Connecting tile - flat on NE side, slopes up along diagonal from NW to SE corners toward SW
-        ctx.moveTo(x, y + yOffset); // North point (low)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (mid - on diagonal)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset - slopeHeight); // South point (high)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // West point (mid - on diagonal)
-        break;
-      case 'connect-northwest':
-        // Connecting tile - flat on SE side, slopes up along diagonal from SW to NE corners toward NW
-        ctx.moveTo(x, y + yOffset); // North point (mid - on diagonal)
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset); // East point (low)
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset); // South point (mid - on diagonal)
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - slopeHeight); // West point (high)
-        break;
-      default:
-        // Flat tile for corner slopes for now
-        ctx.moveTo(x, y + yOffset);
-        ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset);
-        ctx.lineTo(x, y + tileHeight * zoom + yOffset);
-        ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset);
-    }
+    // Land tile - use per-corner heights for smooth slopes
+    const sh = elevationScale * zoom;
+    ctx.moveTo(x, y + yOffset - corners.n * sh);
+    ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - corners.e * sh);
+    ctx.lineTo(x, y + tileHeight * zoom + yOffset - corners.s * sh);
+    ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - corners.w * sh);
   }
   
   ctx.closePath();
@@ -503,28 +312,31 @@ function drawTile(ctx, x, y, elevation, type, slope, zoom, textures, elevationMa
   const config = tileConfig[type];
   const textureImage = textures[type];
 
+  const isSloped = corners.n + corners.e + corners.s + corners.w > 0;
+
   if (textureImage?.complete && textureImage.naturalWidth > 0) {
     ctx.save();
     ctx.clip();
     ctx.drawImage(
       textureImage,
       x - (tileWidth / 2) * zoom,
-      y + yOffset - (slope !== 'flat' ? elevationScale * zoom : 0),
+      y + yOffset - (isSloped ? elevationScale * zoom : 0),
       tileWidth * zoom,
-      tileHeight * zoom + (slope !== 'flat' ? elevationScale * zoom : 0)
+      tileHeight * zoom + (isSloped ? elevationScale * zoom : 0)
     );
     ctx.restore();
   } else {
-    // Color with shading based on slope or water depth
+    // Color with shading based on corner heights (light from NW)
     let brightness = 0;
-    if (slope === 'northeast' || slope === 'northwest') brightness = 10;
-    if (slope === 'southeast' || slope === 'southwest') brightness = -10;
-    
+    if (type !== 'water') {
+      brightness = (corners.n + corners.w - corners.s - corners.e) * 5;
+    }
+
     // Make water darker based on depth
     if (type === 'water' && elevation < 0) {
-      brightness = elevation * 8; // Deeper water is darker
+      brightness = elevation * 8;
     }
-    
+
     ctx.fillStyle = adjustBrightness(config.color, brightness);
     ctx.fill();
   }
@@ -686,69 +498,23 @@ const IsometricCity = ({ debugMode = false }) => {
     const offsetY = height / 2 - gridPixelHeight / 2;
 
 
-    // Create tile property arrays - vector approach
-    const isSlopedMap = Array(gridHeight).fill().map(() => Array(gridWidth).fill(false));
-    const slopeDirectionMap = Array(gridHeight).fill().map(() => Array(gridWidth).fill(null)); 
-    const tileTypeMap = Array(gridHeight).fill().map(() => Array(gridWidth).fill('land'));
-    
-    // First pass: determine basic tile properties
-    for (let x = 0; x < gridWidth; x++) {
-      for (let y = 0; y < gridHeight; y++) {
-        const elevation = elevationMap[y][x];
-        
-        // Determine tile type based on elevation
-        tileTypeMap[y][x] = elevation <= 0 ? 'ocean' : 'land';
-        
-        // Determine if tile should be sloped using original slope detection
-        const originalSlope = getTileSlope(elevationMap, x, y);
-        
-        if (originalSlope !== 'flat') {
-          isSlopedMap[y][x] = true;
-          slopeDirectionMap[y][x] = originalSlope;
-        } else {
-          isSlopedMap[y][x] = false;
-          slopeDirectionMap[y][x] = null;
-        }
-      }
-    }
-    
-    // Create a sorted array of tiles by depth for proper rendering order
+    // Create tiles with corner heights for smooth slope rendering
     const tiles = [];
-    const cityGrid = Array(gridHeight).fill().map(() => Array(gridWidth).fill(null));
-    
-    // Second pass: create tiles using the vector properties
+    const cornerMatrix = Array(gridHeight).fill().map(() => Array(gridWidth).fill(null));
+
     for (let x = 0; x < gridWidth; x++) {
       for (let y = 0; y < gridHeight; y++) {
         const elevation = elevationMap[y][x];
-        const isSloped = isSlopedMap[y][x];
-        const slopeDirection = slopeDirectionMap[y][x];
-        const tileType = tileTypeMap[y][x];
-        
-        // Convert tileType to visual type for rendering
-        let visualType;
-        if (tileType === 'ocean') {
-          visualType = "water";
-        } else {
-          visualType = "grass"; // All land is grass for now
-        }
-        
-        // Determine final slope for rendering
-        let finalSlope = isSloped ? slopeDirection : 'flat';
-        
-        cityGrid[y][x] = { type: visualType, elevation, slope: finalSlope };
-        tiles.push({ x, y, elevation, type: visualType, slope: finalSlope });
+        const visualType = elevation <= 0 ? "water" : "grass";
+        const corners = getTileCornerHeights(elevationMap, x, y);
+
+        cornerMatrix[y][x] = corners;
+        tiles.push({ x, y, elevation, type: visualType, corners });
       }
     }
-    
-    // Create final slope matrix for debug tool
-    const finalSlopeMatrix = Array(gridHeight).fill().map(() => Array(gridWidth).fill('flat'));
-    for (let i = 0; i < tiles.length; i++) {
-      const tile = tiles[i];
-      finalSlopeMatrix[tile.y][tile.x] = tile.slope;
-    }
-    
-    // Store final slope matrix for debug tool
-    setCurrentSlopeMatrix(finalSlopeMatrix);
+
+    // Store corner matrix for debug tool
+    setCurrentSlopeMatrix(cornerMatrix);
     
     // No roads or buildings - just the terrain
     
@@ -756,7 +522,7 @@ const IsometricCity = ({ debugMode = false }) => {
     const centerX = Math.floor(gridWidth / 2);
     const centerY = Math.floor(gridHeight / 2);
     if (elevationMap[centerY][centerX] > 0) {
-      tiles.push({ x: centerX, y: centerY, elevation: elevationMap[centerY][centerX], type: "marker", slope: "north" });
+      tiles.push({ x: centerX, y: centerY, elevation: elevationMap[centerY][centerX], type: "marker", corners: { n: 0, e: 0, s: 0, w: 0 } });
     }
     
     
@@ -774,7 +540,7 @@ const IsometricCity = ({ debugMode = false }) => {
     for (const tile of tiles) {
       const screenX = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
       const screenY = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
-      drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.slope, zoom, textures, elevationMap, tile.x, tile.y);
+      drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.corners, zoom, textures, elevationMap, tile.x, tile.y);
       
       // Draw yellow highlight for hovered tile in debug mode
       if (debugMode && hoveredTile && tile.x === hoveredTile.x && tile.y === hoveredTile.y) {
@@ -826,8 +592,9 @@ const IsometricCity = ({ debugMode = false }) => {
       // Check if coordinates are within bounds
       if (tileX >= 0 && tileX < gridWidth && tileY >= 0 && tileY < gridHeight) {
         const elevation = elevationMap[tileY][tileX];
-        const slope = currentSlopeMatrix ? currentSlopeMatrix[tileY][tileX] : 'unknown';
-        console.log(`Tile vector [${tileX},${tileY}]: elevation=${elevation}, slope=${slope}`);
+        const corners = currentSlopeMatrix ? currentSlopeMatrix[tileY][tileX] : null;
+        const cornerStr = corners ? `n:${corners.n} e:${corners.e} s:${corners.s} w:${corners.w}` : 'unknown';
+        console.log(`Tile [${tileX},${tileY}]: elevation=${elevation}, corners={${cornerStr}}`);
       } else {
         console.log(`Click outside grid bounds: X:${tileX}, Y:${tileY}`);
       }
