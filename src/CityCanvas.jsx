@@ -195,16 +195,21 @@ function getTileCornerHeights(elevationMap, x, y) {
   const dSE = (y < h - 1 && x < w - 1) ? elevationMap[y + 1][x + 1] : current;
   const dSW = (y < h - 1 && x > 0) ? elevationMap[y + 1][x - 1] : current;
 
+  // For water tiles, only slope toward other water tiles (not toward land)
+  // This prevents the seafloor from rising up to meet the coastline
+  const isWater = current <= 0;
+  const check = (val) => val === c1 && (!isWater || val <= 0);
+
   // Each corner: raise if any of its 3 neighbor tiles (2 cardinal + 1 diagonal) is higher
   //   North corner: NE, NW, diagonal[y-1][x-1]
   //   East corner:  NE, SE, diagonal[y-1][x+1]
   //   South corner: SE, SW, diagonal[y+1][x+1]
   //   West corner:  NW, SW, diagonal[y+1][x-1]
   return {
-    n: (ne === c1 || nw === c1 || dNW === c1) ? 1 : 0,
-    e: (ne === c1 || se === c1 || dNE === c1) ? 1 : 0,
-    s: (se === c1 || sw === c1 || dSE === c1) ? 1 : 0,
-    w: (nw === c1 || sw === c1 || dSW === c1) ? 1 : 0,
+    n: (check(ne) || check(nw) || check(dNW)) ? 1 : 0,
+    e: (check(ne) || check(se) || check(dNE)) ? 1 : 0,
+    s: (check(se) || check(sw) || check(dSE)) ? 1 : 0,
+    w: (check(nw) || check(sw) || check(dSW)) ? 1 : 0,
   };
 }
 
@@ -240,24 +245,6 @@ function drawTile(ctx, x, y, elevation, type, corners, zoom, textures, elevation
     ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset);
     ctx.closePath();
     ctx.fill();
-  }
-  
-  // For water tiles, draw surface at sea level (transparent horizontally)
-  if (type === 'water') {
-    const seaLevel = 0;
-    const seaLevelOffset = -seaLevel * elevationScale * zoom;
-    
-    // Draw water surface
-    ctx.fillStyle = adjustBrightness('#2980b9', 20); // Lighter blue for surface
-    ctx.globalAlpha = 0.6; // Semi-transparent
-    ctx.beginPath();
-    ctx.moveTo(x, y + seaLevelOffset);
-    ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + seaLevelOffset);
-    ctx.lineTo(x, y + tileHeight * zoom + seaLevelOffset);
-    ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + seaLevelOffset);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalAlpha = 1.0; // Reset transparency
   }
   
   // Draw the tile surface
@@ -311,7 +298,7 @@ function drawTile(ctx, x, y, elevation, type, corners, zoom, textures, elevation
   ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
   ctx.lineWidth = 1;
   ctx.stroke();
-  
+
   ctx.restore();
 }
 
@@ -502,23 +489,46 @@ const IsometricCity = ({ debugMode = false }) => {
       return b.elevation - a.elevation;
     });
     
-    // Render all tiles
+    // Pass 1: Render water tiles (seafloor)
     for (const tile of tiles) {
+      if (tile.type !== 'water') continue;
       const screenX = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
       const screenY = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
       drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.corners, zoom, textures, elevationMap, tile.x, tile.y);
-      
+    }
+
+    // Pass 2: Flat water surface at 0.5 below sea level
+    const elevationScale = 16;
+    const seaLevelOffset = 0.5 * elevationScale * zoom;
+    ctx.fillStyle = adjustBrightness('#2980b9', 20);
+    ctx.globalAlpha = 0.6;
+    for (const tile of tiles) {
+      if (tile.type !== 'water') continue;
+      const sx = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
+      const sy = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy + seaLevelOffset);
+      ctx.lineTo(sx + (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaLevelOffset);
+      ctx.lineTo(sx, sy + tileHeight * zoom + seaLevelOffset);
+      ctx.lineTo(sx - (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaLevelOffset);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Pass 3: Render land tiles on top
+    for (const tile of tiles) {
+      if (tile.type === 'water') continue;
+      const screenX = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
+      const screenY = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
+      drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.corners, zoom, textures, elevationMap, tile.x, tile.y);
+
       // Draw yellow highlight for hovered tile in debug mode
       if (debugMode && hoveredTile && tile.x === hoveredTile.x && tile.y === hoveredTile.y) {
         ctx.save();
         ctx.globalAlpha = 0.5;
         ctx.fillStyle = 'yellow';
-        
-        // Calculate vertical offset for elevation
-        const elevationScale = 16;
         const yOffset = -tile.elevation * elevationScale * zoom;
-        
-        // Draw yellow diamond over the tile
         ctx.beginPath();
         ctx.moveTo(screenX, screenY + yOffset);
         ctx.lineTo(screenX + (tileWidth / 2) * zoom, screenY + (tileHeight / 2) * zoom + yOffset);
