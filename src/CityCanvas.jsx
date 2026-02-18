@@ -179,9 +179,6 @@ function generateElevationMap(width, height, coastline, seed = 42) {
 function getTileCornerHeights(elevationMap, x, y) {
   const current = elevationMap[y][x];
 
-  // Sea level water is always flat
-  if (current === 0) return { n: 0, e: 0, s: 0, w: 0 };
-
   const h = elevationMap.length;
   const w = elevationMap[0].length;
   const c1 = current + 1;
@@ -219,31 +216,6 @@ function drawTile(ctx, x, y, elevation, type, corners, zoom, textures, elevation
   const elevationScale = 16; // Height of each elevation level in pixels (SimCity 2000 style)
   const yOffset = -elevation * elevationScale * zoom;
   
-  // For water tiles between sea level and seafloor, render nothing (fully transparent)
-  if (type === 'water' && elevation < 0) {
-    // Check if any neighbor is deeper - if so, this is mid-water and should be transparent
-    let hasDeeper = false;
-    for (let dy = -1; dy <= 1; dy++) {
-      for (let dx = -1; dx <= 1; dx++) {
-        if (dx === 0 && dy === 0) continue;
-        const nx = gridX + dx;
-        const ny = gridY + dy;
-        if (nx >= 0 && nx < elevationMap[0].length && ny >= 0 && ny < elevationMap.length) {
-          if (elevationMap[ny][nx] < elevation) {
-            hasDeeper = true;
-            break;
-          }
-        }
-      }
-      if (hasDeeper) break;
-    }
-    
-    // If this tile has deeper neighbors, it's mid-water - render nothing
-    if (hasDeeper) {
-      ctx.restore();
-      return; // Exit early, render nothing
-    }
-  }
   
   // Draw cliff sides only for land (not for underwater terrain)
   if (elevation > 0 && type !== 'water') {
@@ -291,14 +263,8 @@ function drawTile(ctx, x, y, elevation, type, corners, zoom, textures, elevation
   // Draw the tile surface
   ctx.beginPath();
 
-  if (type === 'water') {
-    // Water tiles are always flat
-    ctx.moveTo(x, y + yOffset);
-    ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset);
-    ctx.lineTo(x, y + tileHeight * zoom + yOffset);
-    ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset);
-  } else {
-    // Land tile - use per-corner heights for smooth slopes
+  {
+    // Use per-corner heights for smooth slopes (both land and water)
     const sh = elevationScale * zoom;
     ctx.moveTo(x, y + yOffset - corners.n * sh);
     ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset - corners.e * sh);
