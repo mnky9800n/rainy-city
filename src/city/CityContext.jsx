@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { tileConfig, gridWidth, gridHeight } from './constants.js';
-import { generateCoastline, generateElevationMap, generateRoads } from './terrain.js';
+import { generateCoastline, generateElevationMap, generateRoads, flattenTerrainAtPoints, taperElevation } from './terrain.js';
 import { getTileCornerHeights } from './rendering.js';
+import { findRoadPath, assignRoadTypes } from './pathfinding.js';
 
 const CityContext = createContext(null);
 
@@ -11,7 +12,7 @@ export function useCityContext() {
   return ctx;
 }
 
-export function CityProvider({ debugMode = false, showWaterSurface = true, children }) {
+export function CityProvider({ debugMode = false, showWaterSurface = true, drawRoadsMode = false, children }) {
   const [dimensions, setDimensions] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -64,12 +65,31 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, child
     loadTextures();
   }, []);
 
-  // Generate coastline and elevation map once
+  // Generate coastline and elevation map
   const [coastline] = useState(() => generateCoastline(gridWidth));
-  const [elevationMap] = useState(() => generateElevationMap(gridWidth, gridHeight, coastline, 42));
+  const [elevationMap, setElevationMap] = useState(() => generateElevationMap(gridWidth, gridHeight, coastline, 42));
 
-  // Generate road positions once
-  const [roadSet] = useState(() => generateRoads(gridWidth, gridHeight, elevationMap));
+  // Generate road positions
+  const [roadSet, setRoadSet] = useState(() => generateRoads(gridWidth, gridHeight, elevationMap));
+
+  // Road drawing state
+  const [roadStartTile, setRoadStartTile] = useState(null);
+  const [roadPreviewPath, setRoadPreviewPath] = useState(null);
+
+  const placeRoad = useCallback((startX, startY, endX, endY) => {
+    const path = findRoadPath(startX, startY, endX, endY, elevationMap, gridWidth, gridHeight);
+    if (!path) return;
+
+    // Deep copy elevation map
+    const newElevation = elevationMap.map(row => [...row]);
+    flattenTerrainAtPoints(newElevation, path, gridWidth, gridHeight);
+    taperElevation(newElevation, gridWidth, gridHeight);
+
+    const newRoads = assignRoadTypes(path, roadSet);
+
+    setElevationMap(newElevation);
+    setRoadSet(newRoads);
+  }, [elevationMap, roadSet]);
 
   // Compute tiles and corner matrix from elevation map
   const { tiles, cornerMatrix } = useMemo(() => {
@@ -136,6 +156,12 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, child
     setHoveredTile,
     debugMode,
     showWaterSurface,
+    drawRoadsMode,
+    roadStartTile,
+    setRoadStartTile,
+    roadPreviewPath,
+    setRoadPreviewPath,
+    placeRoad,
   };
 
   return <CityContext.Provider value={value}>{children}</CityContext.Provider>;

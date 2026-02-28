@@ -85,6 +85,7 @@ const App = () => {
   const [showDebugLayer, setShowDebugLayer] = useState(true);
   const [showRoads, setShowRoads] = useState(true);
   const [showRain, setShowRain] = useState(true);
+  const [drawRoadsMode, setDrawRoadsMode] = useState(false);
 
   const playSounds = () => {
     rainRef.current.play();
@@ -105,6 +106,7 @@ const App = () => {
         showTerrain={showTerrain}
         showRoads={showRoads}
         showDebugLayer={showDebugLayer}
+        drawRoadsMode={drawRoadsMode}
       />
       {showRain && <RainCanvas />}
 
@@ -168,7 +170,8 @@ const App = () => {
               <label><input type="checkbox" checked={showTerrain} onChange={() => setShowTerrain(!showTerrain)} /> Terrain</label><br />
               <label><input type="checkbox" checked={showRoads} onChange={() => setShowRoads(!showRoads)} /> Roads</label><br />
               <label><input type="checkbox" checked={showDebugLayer} onChange={() => setShowDebugLayer(!showDebugLayer)} /> Debug Layer</label><br />
-              <label><input type="checkbox" checked={showRain} onChange={() => setShowRain(!showRain)} /> Show Rain</label>
+              <label><input type="checkbox" checked={showRain} onChange={() => setShowRain(!showRain)} /> Show Rain</label><br />
+              <label><input type="checkbox" checked={drawRoadsMode} onChange={() => setDrawRoadsMode(!drawRoadsMode)} /> Draw Roads</label>
             </div>
           )}
         </div>

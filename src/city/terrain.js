@@ -147,51 +147,10 @@ export function generateElevationMap(width, height, coastline, seed = 42) {
   return finalMap;
 }
 
-export function generateRoads(gridWidth, gridHeight, elevationMap, spacing = 8) {
-  const roads = new Map();
-
-  // Flatten terrain around road tiles that have elevation conflicts.
-  // Splat a 5x5 flat patch at the median elevation where needed.
+// Apply 5x5 flat patches at median elevation for given points
+export function flattenTerrainAtPoints(elevationMap, points, gridWidth, gridHeight) {
   const radius = 2;
-  const flattenAt = [];
-
-  for (let x = 0; x < gridWidth; x++) {
-    for (let y = 0; y < gridHeight; y++) {
-      if (elevationMap[y][x] <= 0) continue;
-      if (x % spacing !== 0 && y % spacing !== 0) continue;
-
-      // Check if this road tile has conflicting neighbor elevations
-      const elev = elevationMap[y][x];
-      const isXRoad = x % spacing === 0;
-      const isYRoad = y % spacing === 0;
-      let hasConflict = false;
-
-      if (isXRoad) {
-        // Check perpendicular (x) neighbors and diagonals
-        for (let dy = -1; dy <= 1 && !hasConflict; dy++) {
-          const ny = y + dy;
-          if (ny < 0 || ny >= gridHeight) continue;
-          if (x > 0 && elevationMap[ny][x - 1] > 0 && elevationMap[ny][x - 1] !== elev) hasConflict = true;
-          if (x < gridWidth - 1 && elevationMap[ny][x + 1] > 0 && elevationMap[ny][x + 1] !== elev) hasConflict = true;
-        }
-      }
-      if (isYRoad) {
-        for (let dx = -1; dx <= 1 && !hasConflict; dx++) {
-          const nx = x + dx;
-          if (nx < 0 || nx >= gridWidth) continue;
-          if (y > 0 && elevationMap[y - 1][nx] > 0 && elevationMap[y - 1][nx] !== elev) hasConflict = true;
-          if (y < gridHeight - 1 && elevationMap[y + 1][nx] > 0 && elevationMap[y + 1][nx] !== elev) hasConflict = true;
-        }
-      }
-
-      if (hasConflict) {
-        flattenAt.push({ x, y });
-      }
-    }
-  }
-
-  // Apply 5x5 flat patches at median elevation
-  for (const { x: cx, y: cy } of flattenAt) {
+  for (const { x: cx, y: cy } of points) {
     const elevations = [];
     for (let dy = -radius; dy <= radius; dy++) {
       for (let dx = -radius; dx <= radius; dx++) {
@@ -213,9 +172,11 @@ export function generateRoads(gridWidth, gridHeight, elevationMap, spacing = 8) 
       }
     }
   }
+}
 
-  // Taper edges: ensure no two adjacent land tiles differ by more than 1 level.
-  // Repeat until stable to propagate gradual slopes outward.
+// Taper edges: ensure no two adjacent land tiles differ by more than 1 level.
+// Repeat until stable to propagate gradual slopes outward.
+export function taperElevation(elevationMap, gridWidth, gridHeight) {
   let changed = true;
   while (changed) {
     changed = false;
@@ -243,6 +204,49 @@ export function generateRoads(gridWidth, gridHeight, elevationMap, spacing = 8) 
       }
     }
   }
+}
+
+export function generateRoads(gridWidth, gridHeight, elevationMap, spacing = 8) {
+  const roads = new Map();
+
+  // Flatten terrain around road tiles that have elevation conflicts.
+  const flattenAt = [];
+
+  for (let x = 0; x < gridWidth; x++) {
+    for (let y = 0; y < gridHeight; y++) {
+      if (elevationMap[y][x] <= 0) continue;
+      if (x % spacing !== 0 && y % spacing !== 0) continue;
+
+      const elev = elevationMap[y][x];
+      const isXRoad = x % spacing === 0;
+      const isYRoad = y % spacing === 0;
+      let hasConflict = false;
+
+      if (isXRoad) {
+        for (let dy = -1; dy <= 1 && !hasConflict; dy++) {
+          const ny = y + dy;
+          if (ny < 0 || ny >= gridHeight) continue;
+          if (x > 0 && elevationMap[ny][x - 1] > 0 && elevationMap[ny][x - 1] !== elev) hasConflict = true;
+          if (x < gridWidth - 1 && elevationMap[ny][x + 1] > 0 && elevationMap[ny][x + 1] !== elev) hasConflict = true;
+        }
+      }
+      if (isYRoad) {
+        for (let dx = -1; dx <= 1 && !hasConflict; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= gridWidth) continue;
+          if (y > 0 && elevationMap[y - 1][nx] > 0 && elevationMap[y - 1][nx] !== elev) hasConflict = true;
+          if (y < gridHeight - 1 && elevationMap[y + 1][nx] > 0 && elevationMap[y + 1][nx] !== elev) hasConflict = true;
+        }
+      }
+
+      if (hasConflict) {
+        flattenAt.push({ x, y });
+      }
+    }
+  }
+
+  flattenTerrainAtPoints(elevationMap, flattenAt, gridWidth, gridHeight);
+  taperElevation(elevationMap, gridWidth, gridHeight);
 
   // Now assign road types
   for (let x = 0; x < gridWidth; x++) {
