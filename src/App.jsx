@@ -86,6 +86,7 @@ const App = () => {
   const [showRoads, setShowRoads] = useState(true);
   const [showRain, setShowRain] = useState(true);
   const [drawRoadsMode, setDrawRoadsMode] = useState(false);
+  const resetRoadsRef = useRef(null);
 
   const playSounds = () => {
     rainRef.current.play();
@@ -107,6 +108,7 @@ const App = () => {
         showRoads={showRoads}
         showDebugLayer={showDebugLayer}
         drawRoadsMode={drawRoadsMode}
+        resetRoadsRef={resetRoadsRef}
       />
       {showRain && <RainCanvas />}
 
@@ -172,6 +174,20 @@ const App = () => {
               <label><input type="checkbox" checked={showDebugLayer} onChange={() => setShowDebugLayer(!showDebugLayer)} /> Debug Layer</label><br />
               <label><input type="checkbox" checked={showRain} onChange={() => setShowRain(!showRain)} /> Show Rain</label><br />
               <label><input type="checkbox" checked={drawRoadsMode} onChange={() => setDrawRoadsMode(!drawRoadsMode)} /> Draw Roads</label>
+              <div style={{ marginTop: 4, marginLeft: 20, display: 'flex', gap: 4 }}>
+                <button
+                  onClick={() => resetRoadsRef.current?.drawRoadGrid()}
+                  style={{ padding: '2px 8px', fontSize: 12, background: '#555', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Draw Road Grid
+                </button>
+                <button
+                  onClick={() => resetRoadsRef.current?.resetRoads()}
+                  style={{ padding: '2px 8px', fontSize: 12, background: '#555', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Reset Roads
+                </button>
+              </div>
             </div>
           )}
         </div>

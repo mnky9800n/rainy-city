@@ -54,8 +54,8 @@ const DebugLayer = () => {
       }
     }
 
-    // Draw debug hover highlight
-    if (debugMode && hoveredTile) {
+    // Draw hover highlight for debug or draw roads mode
+    if ((debugMode || drawRoadsMode) && hoveredTile) {
       for (const tile of tiles) {
         if (tile.type === 'water') continue;
         if (tile.x === hoveredTile.x && tile.y === hoveredTile.y) {

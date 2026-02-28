@@ -12,7 +12,7 @@ export function useCityContext() {
   return ctx;
 }
 
-export function CityProvider({ debugMode = false, showWaterSurface = true, drawRoadsMode = false, children }) {
+export function CityProvider({ debugMode = false, showWaterSurface = true, drawRoadsMode = false, resetRoadsRef = null, children }) {
   const [dimensions, setDimensions] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -65,12 +65,11 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     loadTextures();
   }, []);
 
-  // Generate coastline and elevation map
+  // Generate coastline and elevation map (no roads initially)
   const [coastline] = useState(() => generateCoastline(gridWidth));
-  const [elevationMap, setElevationMap] = useState(() => generateElevationMap(gridWidth, gridHeight, coastline, 42));
-
-  // Generate road positions
-  const [roadSet, setRoadSet] = useState(() => generateRoads(gridWidth, gridHeight, elevationMap));
+  const [baseElevation] = useState(() => generateElevationMap(gridWidth, gridHeight, coastline, 42));
+  const [elevationMap, setElevationMap] = useState(baseElevation);
+  const [roadSet, setRoadSet] = useState(() => new Map());
 
   // Road drawing state
   const [roadStartTile, setRoadStartTile] = useState(null);
@@ -90,6 +89,29 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     setElevationMap(newElevation);
     setRoadSet(newRoads);
   }, [elevationMap, roadSet]);
+
+  const resetRoads = useCallback(() => {
+    setElevationMap(baseElevation);
+    setRoadSet(new Map());
+    setRoadStartTile(null);
+    setRoadPreviewPath(null);
+  }, [baseElevation]);
+
+  const drawRoadGrid = useCallback(() => {
+    const newElevation = baseElevation.map(row => [...row]);
+    const roads = generateRoads(gridWidth, gridHeight, newElevation);
+    setElevationMap(newElevation);
+    setRoadSet(roads);
+    setRoadStartTile(null);
+    setRoadPreviewPath(null);
+  }, [baseElevation]);
+
+  // Expose callbacks to parent via ref
+  useEffect(() => {
+    if (resetRoadsRef) {
+      resetRoadsRef.current = { resetRoads, drawRoadGrid };
+    }
+  }, [resetRoadsRef, resetRoads, drawRoadGrid]);
 
   // Compute tiles and corner matrix from elevation map
   const { tiles, cornerMatrix } = useMemo(() => {
@@ -162,6 +184,7 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     roadPreviewPath,
     setRoadPreviewPath,
     placeRoad,
+    resetRoads,
   };
 
   return <CityContext.Provider value={value}>{children}</CityContext.Provider>;
