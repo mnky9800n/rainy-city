@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { tileConfig, gridWidth, gridHeight } from './constants.js';
-import { generateCoastline, generateElevationMap } from './terrain.js';
+import { generateCoastline, generateElevationMap, generateRoads } from './terrain.js';
 import { getTileCornerHeights } from './rendering.js';
 
 const CityContext = createContext(null);
@@ -68,6 +68,9 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, child
   const [coastline] = useState(() => generateCoastline(gridWidth));
   const [elevationMap] = useState(() => generateElevationMap(gridWidth, gridHeight, coastline, 42));
 
+  // Generate road positions once
+  const [roadSet] = useState(() => generateRoads(gridWidth, gridHeight, elevationMap));
+
   // Compute tiles and corner matrix from elevation map
   const { tiles, cornerMatrix } = useMemo(() => {
     const tiles = [];
@@ -76,7 +79,11 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, child
     for (let x = 0; x < gridWidth; x++) {
       for (let y = 0; y < gridHeight; y++) {
         const elevation = elevationMap[y][x];
-        const visualType = elevation <= 0 ? "water" : "grass";
+        let visualType = elevation <= 0 ? "water" : "grass";
+        const roadType = roadSet.get(`${x},${y}`);
+        if (visualType === "grass" && roadType) {
+          visualType = roadType;
+        }
         const corners = getTileCornerHeights(elevationMap, x, y);
 
         cornerMatrix[y][x] = corners;
@@ -100,7 +107,7 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, child
     });
 
     return { tiles, cornerMatrix };
-  }, [elevationMap]);
+  }, [elevationMap, roadSet]);
 
   const value = {
     dimensions,

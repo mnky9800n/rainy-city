@@ -147,6 +147,29 @@ export function generateElevationMap(width, height, coastline, seed = 42) {
   return finalMap;
 }
 
+export function generateRoads(gridWidth, gridHeight, elevationMap, spacing = 8) {
+  const roads = new Map();
+
+  for (let x = 0; x < gridWidth; x++) {
+    for (let y = 0; y < gridHeight; y++) {
+      if (elevationMap[y][x] <= 0) continue;
+
+      const onXRoad = x % spacing === 0;
+      const onYRoad = y % spacing === 0;
+
+      if (onXRoad && onYRoad) {
+        roads.set(`${x},${y}`, "road_intersection");
+      } else if (onXRoad) {
+        roads.set(`${x},${y}`, "road");
+      } else if (onYRoad) {
+        roads.set(`${x},${y}`, "road_cross");
+      }
+    }
+  }
+
+  return roads;
+}
+
 export function generateRiverPath(gridWidth, gridHeight, seed = 42) {
   const rand = mulberry32(seed);
   const river = [];
