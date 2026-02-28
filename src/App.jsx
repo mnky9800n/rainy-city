@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import RainCanvas from "./RainCanvas";
-import IsometricCity from "./CityCanvas";
+import CityRenderer from "./city/CityRenderer";
 
 
 const DraggableWindow = ({ children, initialPosition = { x: 100, y: 100 } }) => {
@@ -91,7 +91,7 @@ const App = () => {
 
   return (
     <div className="relative w-full h-full bg-gray-900 min-h-screen">
-      <IsometricCity debugMode={debugMode} />
+      <CityRenderer debugMode={debugMode} />
       <RainCanvas />
 
       <audio ref={rainRef} src="./rain.mp3" loop />
