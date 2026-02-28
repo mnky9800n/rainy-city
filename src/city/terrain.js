@@ -150,6 +150,101 @@ export function generateElevationMap(width, height, coastline, seed = 42) {
 export function generateRoads(gridWidth, gridHeight, elevationMap, spacing = 8) {
   const roads = new Map();
 
+  // Flatten terrain around road tiles that have elevation conflicts.
+  // Splat a 5x5 flat patch at the median elevation where needed.
+  const radius = 2;
+  const flattenAt = [];
+
+  for (let x = 0; x < gridWidth; x++) {
+    for (let y = 0; y < gridHeight; y++) {
+      if (elevationMap[y][x] <= 0) continue;
+      if (x % spacing !== 0 && y % spacing !== 0) continue;
+
+      // Check if this road tile has conflicting neighbor elevations
+      const elev = elevationMap[y][x];
+      const isXRoad = x % spacing === 0;
+      const isYRoad = y % spacing === 0;
+      let hasConflict = false;
+
+      if (isXRoad) {
+        // Check perpendicular (x) neighbors and diagonals
+        for (let dy = -1; dy <= 1 && !hasConflict; dy++) {
+          const ny = y + dy;
+          if (ny < 0 || ny >= gridHeight) continue;
+          if (x > 0 && elevationMap[ny][x - 1] > 0 && elevationMap[ny][x - 1] !== elev) hasConflict = true;
+          if (x < gridWidth - 1 && elevationMap[ny][x + 1] > 0 && elevationMap[ny][x + 1] !== elev) hasConflict = true;
+        }
+      }
+      if (isYRoad) {
+        for (let dx = -1; dx <= 1 && !hasConflict; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= gridWidth) continue;
+          if (y > 0 && elevationMap[y - 1][nx] > 0 && elevationMap[y - 1][nx] !== elev) hasConflict = true;
+          if (y < gridHeight - 1 && elevationMap[y + 1][nx] > 0 && elevationMap[y + 1][nx] !== elev) hasConflict = true;
+        }
+      }
+
+      if (hasConflict) {
+        flattenAt.push({ x, y });
+      }
+    }
+  }
+
+  // Apply 5x5 flat patches at median elevation
+  for (const { x: cx, y: cy } of flattenAt) {
+    const elevations = [];
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight && elevationMap[ny][nx] > 0) {
+          elevations.push(elevationMap[ny][nx]);
+        }
+      }
+    }
+    elevations.sort((a, b) => a - b);
+    const median = elevations[Math.floor(elevations.length / 2)];
+
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx >= 0 && nx < gridWidth && ny >= 0 && ny < gridHeight && elevationMap[ny][nx] > 0) {
+          elevationMap[ny][nx] = median;
+        }
+      }
+    }
+  }
+
+  // Taper edges: ensure no two adjacent land tiles differ by more than 1 level.
+  // Repeat until stable to propagate gradual slopes outward.
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (let y = 0; y < gridHeight; y++) {
+      for (let x = 0; x < gridWidth; x++) {
+        if (elevationMap[y][x] <= 0) continue;
+        const elev = elevationMap[y][x];
+
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || nx >= gridWidth || ny < 0 || ny >= gridHeight) continue;
+            if (elevationMap[ny][nx] <= 0) continue;
+
+            if (elevationMap[ny][nx] - elev > 1) {
+              elevationMap[ny][nx] = elev + 1;
+              changed = true;
+            } else if (elev - elevationMap[ny][nx] > 1) {
+              elevationMap[y][x] = elevationMap[ny][nx] + 1;
+              changed = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Now assign road types
   for (let x = 0; x < gridWidth; x++) {
     for (let y = 0; y < gridHeight; y++) {
       if (elevationMap[y][x] <= 0) continue;
