@@ -72,7 +72,8 @@ const WhaleLayer = () => {
     const center = getWaterCenter(elevationMap);
     // Spawn the first whale, then cluster the rest nearby
     const leader = initWhaleInWater(elevationMap);
-    const leaderAngle = Math.random() * Math.PI * 2;
+    // Head northwest (tile -X direction) with slight variation
+    const leaderAngle = Math.PI + (Math.random() - 0.5) * 0.4;
     const whales = [];
     for (let i = 0; i < 5; i++) {
       let wx, wy;
@@ -311,20 +312,29 @@ const WhaleLayer = () => {
         const s = z * whale.size * 3.5;
         group.scale.set(s, s, s);
 
-        // Rotation: lay the model flat (it's modeled upright along Z),
-        // then rotate to match swimming heading in isometric space.
-        // Isometric heading: tile angle -> screen angle
-        // In tile space, dx=cos(angle), dy=sin(angle)
-        // In screen space, sx = (dx - dy) * tileWidth/2, sy = (dx + dy) * tileHeight/2
+        // Rotation: whale model has body along Z, height along Y.
+        // We use quaternions to apply rotations in world space:
+        // 1) Tilt: rotate π/2 around X so back faces camera, nose points -Y
+        // 2) Heading: rotate around world Z (screen normal) to aim the nose
+        //
+        // Convert tile heading to screen heading (isometric projection)
         const dx = Math.cos(whale.angle);
         const dy = Math.sin(whale.angle);
-        const sxDir = (dx - dy); // screen X direction (unnormalized)
-        const syDir = -(dx + dy) * 0.5; // screen Y direction (flipped, squashed)
+        const sxDir = (dx - dy); // screen X component
+        const syDir = -(dx + dy) * 0.5; // screen Y component (flipped, squashed)
         const screenAngle = Math.atan2(syDir, sxDir);
 
-        // Model faces +Z. We want it on the screen XY plane facing screenAngle.
-        // Rotate -90 around X to lay flat, then rotate around new Z for heading.
-        group.rotation.set(-Math.PI / 2, 0, screenAngle);
+        // After tilt, nose is at -Y (270°). To aim at screenAngle, rotate by:
+        const headingRotation = screenAngle + Math.PI / 2;
+
+        const qTilt = new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(1, 0, 0), Math.PI / 2
+        );
+        const qHeading = new THREE.Quaternion().setFromAxisAngle(
+          new THREE.Vector3(0, 0, 1), headingRotation
+        );
+        // Apply tilt first (model space), then heading (world space)
+        group.quaternion.copy(qHeading).multiply(qTilt);
 
         // --- Wave vertex animation ---
         for (const { obj, basePositions } of geoData) {
