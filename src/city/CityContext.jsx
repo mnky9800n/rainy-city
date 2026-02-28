@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
 import { tileConfig, gridWidth, gridHeight } from './constants.js';
-import { generateCoastline, generateElevationMap } from './terrain.js';
+import { generateCoastline, generateElevationMap, generateRoads, flattenTerrainAtPoints, taperElevation } from './terrain.js';
 import { getTileCornerHeights } from './rendering.js';
+import { findRoadPath, assignRoadTypes } from './pathfinding.js';
 
 const CityContext = createContext(null);
 
@@ -11,7 +12,7 @@ export function useCityContext() {
   return ctx;
 }
 
-export function CityProvider({ debugMode = false, showWaterSurface = true, children }) {
+export function CityProvider({ debugMode = false, showWaterSurface = true, drawRoadsMode = false, destructionMode = false, resetRoadsRef = null, children }) {
   const [dimensions, setDimensions] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -64,9 +65,77 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, child
     loadTextures();
   }, []);
 
-  // Generate coastline and elevation map once
+  // Generate coastline and elevation map (no roads initially)
   const [coastline] = useState(() => generateCoastline(gridWidth));
-  const [elevationMap] = useState(() => generateElevationMap(gridWidth, gridHeight, coastline, 42));
+  const [baseElevation] = useState(() => generateElevationMap(gridWidth, gridHeight, coastline, 42));
+  const [elevationMap, setElevationMap] = useState(baseElevation);
+  const [roadSet, setRoadSet] = useState(() => new Map());
+
+  // Road drawing state
+  const [roadStartTile, setRoadStartTile] = useState(null);
+  const [roadPreviewPath, setRoadPreviewPath] = useState(null);
+
+  const placeRoad = useCallback((startX, startY, endX, endY) => {
+    const path = findRoadPath(startX, startY, endX, endY, elevationMap, gridWidth, gridHeight);
+    if (!path) return;
+
+    // Deep copy elevation map
+    const newElevation = elevationMap.map(row => [...row]);
+    flattenTerrainAtPoints(newElevation, path, gridWidth, gridHeight);
+    taperElevation(newElevation, gridWidth, gridHeight);
+
+    const newRoads = assignRoadTypes(path, roadSet);
+
+    setElevationMap(newElevation);
+    setRoadSet(newRoads);
+  }, [elevationMap, roadSet]);
+
+  const resetRoads = useCallback(() => {
+    setElevationMap(baseElevation);
+    setRoadSet(new Map());
+    setRoadStartTile(null);
+    setRoadPreviewPath(null);
+  }, [baseElevation]);
+
+  const drawRoadGrid = useCallback(() => {
+    const newElevation = baseElevation.map(row => [...row]);
+    const roads = generateRoads(gridWidth, gridHeight, newElevation);
+    setElevationMap(newElevation);
+    setRoadSet(roads);
+    setRoadStartTile(null);
+    setRoadPreviewPath(null);
+  }, [baseElevation]);
+
+  const destroyTile = useCallback((x, y) => {
+    const newElevation = elevationMap.map(row => [...row]);
+    newElevation[y][x] = baseElevation[y][x];
+    taperElevation(newElevation, gridWidth, gridHeight);
+
+    const newRoads = new Map(roadSet);
+    newRoads.delete(`${x},${y}`);
+
+    setElevationMap(newElevation);
+    setRoadSet(newRoads);
+  }, [elevationMap, baseElevation, roadSet]);
+
+  const destroyTiles = useCallback((tileList) => {
+    const newElevation = elevationMap.map(row => [...row]);
+    const newRoads = new Map(roadSet);
+    for (const { x, y } of tileList) {
+      newElevation[y][x] = baseElevation[y][x];
+      newRoads.delete(`${x},${y}`);
+    }
+    taperElevation(newElevation, gridWidth, gridHeight);
+    setElevationMap(newElevation);
+    setRoadSet(newRoads);
+  }, [elevationMap, baseElevation, roadSet]);
+
+  // Expose callbacks to parent via ref
+  useEffect(() => {
+    if (resetRoadsRef) {
+      resetRoadsRef.current = { resetRoads, drawRoadGrid };
+    }
+  }, [resetRoadsRef, resetRoads, drawRoadGrid]);
 
   // Compute tiles and corner matrix from elevation map
   const { tiles, cornerMatrix } = useMemo(() => {
@@ -76,8 +145,22 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, child
     for (let x = 0; x < gridWidth; x++) {
       for (let y = 0; y < gridHeight; y++) {
         const elevation = elevationMap[y][x];
-        const visualType = elevation <= 0 ? "water" : "grass";
+        let visualType = elevation <= 0 ? "water" : "grass";
         const corners = getTileCornerHeights(elevationMap, x, y);
+        const roadType = roadSet.get(`${x},${y}`);
+        if (visualType === "grass" && roadType) {
+          // Only place road if no cross-slope (slope perpendicular to road direction)
+          // road (along y): enters N-E edge, exits W-S edge. Cross-slope if N≠E or W≠S
+          // road_cross (along x): enters N-W edge, exits E-S edge. Cross-slope if N≠W or E≠S
+          const hasCrossSlope =
+            roadType === "road" ? (corners.n !== corners.e || corners.w !== corners.s) :
+            roadType === "road_cross" ? (corners.n !== corners.w || corners.e !== corners.s) :
+            (corners.n !== corners.e || corners.w !== corners.s || corners.n !== corners.w || corners.e !== corners.s);
+
+          if (!hasCrossSlope) {
+            visualType = roadType;
+          }
+        }
 
         cornerMatrix[y][x] = corners;
         tiles.push({ x, y, elevation, type: visualType, corners });
@@ -100,7 +183,7 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, child
     });
 
     return { tiles, cornerMatrix };
-  }, [elevationMap]);
+  }, [elevationMap, roadSet]);
 
   const value = {
     dimensions,
@@ -119,6 +202,16 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, child
     setHoveredTile,
     debugMode,
     showWaterSurface,
+    drawRoadsMode,
+    destructionMode,
+    destroyTile,
+    destroyTiles,
+    roadStartTile,
+    setRoadStartTile,
+    roadPreviewPath,
+    setRoadPreviewPath,
+    placeRoad,
+    resetRoads,
   };
 
   return <CityContext.Provider value={value}>{children}</CityContext.Provider>;

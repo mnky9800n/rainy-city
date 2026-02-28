@@ -97,13 +97,40 @@ export function drawTile(ctx, x, y, elevation, type, corners, zoom, textures) {
   if (textureImage?.complete && textureImage.naturalWidth > 0) {
     ctx.save();
     ctx.clip();
-    ctx.drawImage(
-      textureImage,
-      x - (tileWidth / 2) * zoom,
-      y + yOffset - (isSloped ? elevationScale * zoom : 0),
-      tileWidth * zoom,
-      tileHeight * zoom + (isSloped ? elevationScale * zoom : 0)
-    );
+
+    const isRoadType = type === 'road' || type === 'road_cross' || type === 'road_intersection';
+
+    if (isRoadType && isSloped) {
+      // Map texture to the sloped diamond using an affine transform.
+      // On a flat tile, texture midpoints map to diamond corners:
+      //   tex(W/2, 0) -> N,  tex(W, H/2) -> E,  tex(0, H/2) -> W,  tex(W/2, H) -> S
+      // For road tiles (parallelograms), an affine transform can match all 4 exactly.
+      const imgW = textureImage.naturalWidth;
+      const imgH = textureImage.naturalHeight;
+      const tw_s = tileWidth * zoom;
+      const th_s = tileHeight * zoom;
+      const hw = tw_s / 2;
+      const sh = elevationScale * zoom;
+
+      const a = tw_s / imgW;
+      const b = (corners.w - corners.e) * sh / imgW;
+      const c = 0;
+      const d = (th_s + sh * (2 * corners.n - corners.w - corners.e)) / imgH;
+      const e_val = x - hw;
+      const f_val = y + yOffset - sh * (2 * corners.n + corners.w - corners.e) / 2;
+
+      ctx.transform(a, b, c, d, e_val, f_val);
+      ctx.drawImage(textureImage, 0, 0);
+    } else {
+      ctx.drawImage(
+        textureImage,
+        x - (tileWidth / 2) * zoom,
+        y + yOffset - (isSloped ? elevationScale * zoom : 0),
+        tileWidth * zoom,
+        tileHeight * zoom + (isSloped ? elevationScale * zoom : 0)
+      );
+    }
+
     ctx.restore();
   } else {
     let brightness = 0;

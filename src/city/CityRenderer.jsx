@@ -77,14 +77,18 @@ const CityRenderer = ({
   showSeafloor = true,
   showWaterSurface = true,
   showTerrain = true,
+  showRoads = true,
   showDebugLayer = true,
+  drawRoadsMode = false,
+  destructionMode = false,
+  resetRoadsRef = null,
 }) => {
   return (
-    <CityProvider debugMode={debugMode} showWaterSurface={showWaterSurface}>
+    <CityProvider debugMode={debugMode} showWaterSurface={showWaterSurface} drawRoadsMode={drawRoadsMode} destructionMode={destructionMode} resetRoadsRef={resetRoadsRef}>
       <ZoomContainer>
         {showSeafloor && <SeafloorLayer />}
         {showWaterSurface && <WaterSurfaceLayer />}
-        {showTerrain && <TerrainLayer />}
+        {showTerrain && <TerrainLayer showRoads={showRoads} />}
         {showDebugLayer && <DebugLayer />}
       </ZoomContainer>
     </CityProvider>

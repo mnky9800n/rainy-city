@@ -16,6 +16,14 @@ export const tileConfig = {
     color: "#34495e",
     texture: "./textures/road.png"
   },
+  road_cross: {
+    color: "#34495e",
+    texture: "./textures/road_cross.png"
+  },
+  road_intersection: {
+    color: "#34495e",
+    texture: "./textures/road_intersection.png"
+  },
   marker: {
     color: "#7f8c8d",
     texture: "./textures/marker.png"
