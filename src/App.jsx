@@ -67,7 +67,7 @@ const DraggableWindow = ({ children, initialPosition = { x: 100, y: 100 } }) => 
         }}
         onMouseDown={onMouseDown}
       >
-        Audio Controls
+        Rainy City
       </div>
       <div style={{ padding: 16 }}>{children}</div>
     </div>
@@ -78,6 +78,12 @@ const App = () => {
   const rainRef = useRef(null);
   const cityRef = useRef(null);
   const [debugMode, setDebugMode] = useState(false);
+  const [showDebugTools, setShowDebugTools] = useState(false);
+  const [showSeafloor, setShowSeafloor] = useState(true);
+  const [showWaterSurface, setShowWaterSurface] = useState(true);
+  const [showTerrain, setShowTerrain] = useState(true);
+  const [showDebugLayer, setShowDebugLayer] = useState(true);
+  const [showRain, setShowRain] = useState(true);
 
   const playSounds = () => {
     rainRef.current.play();
@@ -91,8 +97,14 @@ const App = () => {
 
   return (
     <div className="relative w-full h-full bg-gray-900 min-h-screen">
-      <CityRenderer debugMode={debugMode} />
-      <RainCanvas />
+      <CityRenderer
+        debugMode={debugMode}
+        showSeafloor={showSeafloor}
+        showWaterSurface={showWaterSurface}
+        showTerrain={showTerrain}
+        showDebugLayer={showDebugLayer}
+      />
+      {showRain && <RainCanvas />}
 
       <audio ref={rainRef} src="./rain.mp3" loop />
       <audio ref={cityRef} src="./city.mp3" loop />
@@ -138,22 +150,24 @@ const App = () => {
         </div>
         
         <div className="mt-4 pt-4 border-t border-gray-600">
-          <label className="block text-white text-sm mb-2">Debug Tools</label>
-          <button
-            onClick={() => setDebugMode(!debugMode)}
-            className={`px-4 py-2 rounded flex items-center gap-2 ${
-              debugMode 
-                ? "bg-red-600 text-white" 
-                : "bg-gray-700 text-white"
-            }`}
-          >
-            <div 
-              className={`w-2 h-2 rounded-full ${
-                debugMode ? "bg-red-400" : "bg-gray-400"
-              }`}
+          <label className="flex items-center gap-2 text-white text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showDebugTools}
+              onChange={() => setShowDebugTools(!showDebugTools)}
             />
-            Get Coordinates
-          </button>
+            Debug Tools
+          </label>
+          {showDebugTools && (
+            <div style={{ marginLeft: 20, marginTop: 8, color: "#fff", fontSize: 14 }}>
+              <label><input type="checkbox" checked={debugMode} onChange={() => setDebugMode(!debugMode)} /> Get Coordinates</label><br />
+              <label><input type="checkbox" checked={showSeafloor} onChange={() => setShowSeafloor(!showSeafloor)} /> Seafloor</label><br />
+              <label><input type="checkbox" checked={showWaterSurface} onChange={() => setShowWaterSurface(!showWaterSurface)} /> Water Surface</label><br />
+              <label><input type="checkbox" checked={showTerrain} onChange={() => setShowTerrain(!showTerrain)} /> Terrain</label><br />
+              <label><input type="checkbox" checked={showDebugLayer} onChange={() => setShowDebugLayer(!showDebugLayer)} /> Debug Layer</label><br />
+              <label><input type="checkbox" checked={showRain} onChange={() => setShowRain(!showRain)} /> Show Rain</label>
+            </div>
+          )}
         </div>
       </DraggableWindow>
     </div>

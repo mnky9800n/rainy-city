@@ -72,14 +72,20 @@ const ZoomContainer = ({ children }) => {
   );
 };
 
-const CityRenderer = ({ debugMode = false }) => {
+const CityRenderer = ({
+  debugMode = false,
+  showSeafloor = true,
+  showWaterSurface = true,
+  showTerrain = true,
+  showDebugLayer = true,
+}) => {
   return (
-    <CityProvider debugMode={debugMode}>
+    <CityProvider debugMode={debugMode} showWaterSurface={showWaterSurface}>
       <ZoomContainer>
-        <SeafloorLayer />
-        <WaterSurfaceLayer />
-        <TerrainLayer />
-        <DebugLayer />
+        {showSeafloor && <SeafloorLayer />}
+        {showWaterSurface && <WaterSurfaceLayer />}
+        {showTerrain && <TerrainLayer />}
+        {showDebugLayer && <DebugLayer />}
       </ZoomContainer>
     </CityProvider>
   );

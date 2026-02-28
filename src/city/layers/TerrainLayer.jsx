@@ -6,7 +6,7 @@ import { toScreenCoords, drawTile, adjustBrightness } from '../rendering.js';
 
 const TerrainLayer = () => {
   const canvasRef = useRef(null);
-  const { dimensions, zoom, panX, panY, textures, tiles, elevationMap } = useCityContext();
+  const { dimensions, zoom, panX, panY, textures, tiles, elevationMap, showWaterSurface } = useCityContext();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -17,7 +17,7 @@ const TerrainLayer = () => {
     const seaLevelOffset = -0.35 * elevationScale * zoom;
 
     for (const tile of tiles) {
-      if (tile.type === 'water') {
+      if (tile.type === 'water' && showWaterSurface) {
         // Draw water surface in the same pass so land tiles paint over it
         const sx = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
         const sy = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
@@ -37,7 +37,7 @@ const TerrainLayer = () => {
       const { screenX, screenY } = toScreenCoords(tile.x, tile.y, zoom, offsetX, offsetY);
       drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.corners, zoom, textures);
     }
-  }, [dimensions, zoom, panX, panY, textures, tiles, elevationMap]);
+  }, [dimensions, zoom, panX, panY, textures, tiles, elevationMap, showWaterSurface]);
 
   return (
     <canvas

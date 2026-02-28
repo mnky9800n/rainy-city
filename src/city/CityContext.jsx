@@ -11,7 +11,7 @@ export function useCityContext() {
   return ctx;
 }
 
-export function CityProvider({ debugMode = false, children }) {
+export function CityProvider({ debugMode = false, showWaterSurface = true, children }) {
   const [dimensions, setDimensions] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -118,6 +118,7 @@ export function CityProvider({ debugMode = false, children }) {
     hoveredTile,
     setHoveredTile,
     debugMode,
+    showWaterSurface,
   };
 
   return <CityContext.Provider value={value}>{children}</CityContext.Provider>;
