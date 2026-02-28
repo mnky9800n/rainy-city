@@ -3,7 +3,8 @@
   "dependencies": {
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
-    "react-scripts": "5.0.1"
+    "react-scripts": "5.0.1",
+    "three": "^0.183.1"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0"
