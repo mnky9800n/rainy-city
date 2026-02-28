@@ -118,6 +118,18 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     setRoadSet(newRoads);
   }, [elevationMap, baseElevation, roadSet]);
 
+  const destroyTiles = useCallback((tileList) => {
+    const newElevation = elevationMap.map(row => [...row]);
+    const newRoads = new Map(roadSet);
+    for (const { x, y } of tileList) {
+      newElevation[y][x] = baseElevation[y][x];
+      newRoads.delete(`${x},${y}`);
+    }
+    taperElevation(newElevation, gridWidth, gridHeight);
+    setElevationMap(newElevation);
+    setRoadSet(newRoads);
+  }, [elevationMap, baseElevation, roadSet]);
+
   // Expose callbacks to parent via ref
   useEffect(() => {
     if (resetRoadsRef) {
@@ -193,6 +205,7 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     drawRoadsMode,
     destructionMode,
     destroyTile,
+    destroyTiles,
     roadStartTile,
     setRoadStartTile,
     roadPreviewPath,

@@ -12,12 +12,15 @@ const DebugLayer = () => {
     hoveredTile, setHoveredTile, debugMode,
     drawRoadsMode, roadStartTile, setRoadStartTile,
     roadPreviewPath, setRoadPreviewPath, placeRoad,
-    destructionMode, destroyTile,
+    destructionMode, destroyTile, destroyTiles,
   } = useCityContext();
 
   const interactionEnabled = debugMode || drawRoadsMode || destructionMode;
 
   const bulldozerCursor = 'url(/bulldozer.png) 16 16, auto';
+
+  // Bulldozer drag selection state
+  const dragRef = useRef(null); // { startX, startY, endX, endY } during drag
 
   // Explosion particle system state
   const explosionsRef = useRef([]);
@@ -105,13 +108,33 @@ const DebugLayer = () => {
       }
     }
 
+    // Draw bulldozer drag rectangle preview
+    if (destructionMode && dragRef.current) {
+      const { startX, startY, endX, endY } = dragRef.current;
+      const minX = Math.max(0, Math.min(startX, endX));
+      const maxX = Math.min(gridWidth - 1, Math.max(startX, endX));
+      const minY = Math.max(0, Math.min(startY, endY));
+      const maxY = Math.min(gridHeight - 1, Math.max(startY, endY));
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          const elev = elevationMap[y][x];
+          if (elev <= 0) continue; // skip water
+          drawDiamond(x, y, elev, 'red', 0.5);
+        }
+      }
+    }
+
     if ((debugMode || drawRoadsMode || destructionMode) && hoveredTile) {
-      const highlightColor = destructionMode ? 'red' : 'yellow';
-      for (const tile of tiles) {
-        if (tile.type === 'water') continue;
-        if (tile.x === hoveredTile.x && tile.y === hoveredTile.y) {
-          drawDiamond(tile.x, tile.y, tile.elevation, highlightColor, 0.5);
-          break;
+      // Skip single-tile hover when dragging in destruction mode
+      const showHover = !(destructionMode && dragRef.current);
+      if (showHover) {
+        const highlightColor = destructionMode ? 'red' : 'yellow';
+        for (const tile of tiles) {
+          if (tile.type === 'water') continue;
+          if (tile.x === hoveredTile.x && tile.y === hoveredTile.y) {
+            drawDiamond(tile.x, tile.y, tile.elevation, highlightColor, 0.5);
+            break;
+          }
         }
       }
     }
@@ -210,6 +233,45 @@ const DebugLayer = () => {
       );
     };
 
+    const handleMouseDown = (e) => {
+      if (e.button !== 0) return; // left click only
+      if (!destructionMode) return;
+      const { tileX, tileY } = getTileAt(e);
+      if (tileX < 0 || tileX >= gridWidth || tileY < 0 || tileY >= gridHeight) return;
+      e.stopPropagation(); // prevent ZoomContainer from panning
+      dragRef.current = { startX: tileX, startY: tileY, endX: tileX, endY: tileY };
+      redrawOverlays();
+    };
+
+    const handleMouseUp = (e) => {
+      if (e.button !== 0) return;
+      if (!destructionMode || !dragRef.current) return;
+      e.stopPropagation();
+
+      const { startX, startY, endX, endY } = dragRef.current;
+      const minX = Math.max(0, Math.min(startX, endX));
+      const maxX = Math.min(gridWidth - 1, Math.max(startX, endX));
+      const minY = Math.max(0, Math.min(startY, endY));
+      const maxY = Math.min(gridHeight - 1, Math.max(startY, endY));
+
+      const toDestroy = [];
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          const elevation = elevationMap[y][x];
+          if (elevation <= 0) continue; // skip water
+          spawnExplosion(x, y, elevation);
+          toDestroy.push({ x, y });
+        }
+      }
+
+      dragRef.current = null;
+      if (toDestroy.length > 0) {
+        destroyTiles(toDestroy);
+        runExplosionLoop();
+      }
+      redrawOverlays();
+    };
+
     const handleClick = (e) => {
       const { tileX, tileY } = getTileAt(e);
 
@@ -218,14 +280,8 @@ const DebugLayer = () => {
         return;
       }
 
-      if (destructionMode) {
-        const elevation = elevationMap[tileY][tileX];
-        if (elevation <= 0) return; // Can't destroy water tiles
-        spawnExplosion(tileX, tileY, elevation);
-        runExplosionLoop();
-        destroyTile(tileX, tileY);
-        return;
-      }
+      // Destruction mode is handled by mousedown/mouseup
+      if (destructionMode) return;
 
       if (drawRoadsMode) {
         const elevation = elevationMap[tileY][tileX];
@@ -256,6 +312,14 @@ const DebugLayer = () => {
       if (tileX >= 0 && tileX < gridWidth && tileY >= 0 && tileY < gridHeight) {
         setHoveredTile({ x: tileX, y: tileY });
 
+        // Update drag rectangle endpoint
+        if (destructionMode && dragRef.current) {
+          e.stopPropagation(); // prevent ZoomContainer from panning
+          dragRef.current.endX = tileX;
+          dragRef.current.endY = tileY;
+          redrawOverlays();
+        }
+
         // Update preview path when in draw roads mode with a start tile set
         if (drawRoadsMode && roadStartTile) {
           if (elevationMap[tileY][tileX] > 0) {
@@ -284,15 +348,19 @@ const DebugLayer = () => {
       }
     };
 
+    canvas.addEventListener("mousedown", handleMouseDown);
+    canvas.addEventListener("mouseup", handleMouseUp);
     canvas.addEventListener("click", handleClick);
     canvas.addEventListener("mousemove", handleMouseMove);
     canvas.addEventListener("contextmenu", handleContextMenu);
     return () => {
+      canvas.removeEventListener("mousedown", handleMouseDown);
+      canvas.removeEventListener("mouseup", handleMouseUp);
       canvas.removeEventListener("click", handleClick);
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("contextmenu", handleContextMenu);
     };
-  }, [interactionEnabled, debugMode, drawRoadsMode, destructionMode, destroyTile, dimensions, zoom, panX, panY, elevationMap, cornerMatrix, setHoveredTile, roadStartTile, setRoadStartTile, setRoadPreviewPath, placeRoad, spawnExplosion, runExplosionLoop]);
+  }, [interactionEnabled, debugMode, drawRoadsMode, destructionMode, destroyTile, destroyTiles, dimensions, zoom, panX, panY, elevationMap, cornerMatrix, setHoveredTile, roadStartTile, setRoadStartTile, setRoadPreviewPath, placeRoad, spawnExplosion, runExplosionLoop, redrawOverlays]);
 
   // Clear road drawing state when mode is disabled
   useEffect(() => {
