@@ -3,6 +3,7 @@ import { CityProvider, useCityContext } from './CityContext.jsx';
 import SeafloorLayer from './layers/SeafloorLayer.jsx';
 import WaterSurfaceLayer from './layers/WaterSurfaceLayer.jsx';
 import TerrainLayer from './layers/TerrainLayer.jsx';
+import WhaleLayer from './layers/WhaleLayer.jsx';
 import DebugLayer from './layers/DebugLayer.jsx';
 
 const ZoomContainer = ({ children }) => {
@@ -88,6 +89,7 @@ const CityRenderer = ({
       <ZoomContainer>
         {showSeafloor && <SeafloorLayer />}
         {showWaterSurface && <WaterSurfaceLayer />}
+        <WhaleLayer />
         {showTerrain && <TerrainLayer showRoads={showRoads} />}
         {showDebugLayer && <DebugLayer />}
       </ZoomContainer>

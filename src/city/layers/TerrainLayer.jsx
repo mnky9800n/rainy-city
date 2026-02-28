@@ -17,22 +17,24 @@ const TerrainLayer = ({ showRoads = true }) => {
     const seaLevelOffset = -0.35 * elevationScale * zoom;
 
     for (const tile of tiles) {
-      if (tile.type === 'water' && showWaterSurface) {
-        // Draw water surface in the same pass so land tiles paint over it
-        const sx = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
-        const sy = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
-        ctx.save();
-        ctx.fillStyle = adjustBrightness('#2980b9', 20);
-        ctx.globalAlpha = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy + seaLevelOffset);
-        ctx.lineTo(sx + (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaLevelOffset);
-        ctx.lineTo(sx, sy + tileHeight * zoom + seaLevelOffset);
-        ctx.lineTo(sx - (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaLevelOffset);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-        continue;
+      if (tile.type === 'water') {
+        if (showWaterSurface) {
+          // Draw water surface in the same pass so land tiles paint over it
+          const sx = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
+          const sy = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
+          ctx.save();
+          ctx.fillStyle = adjustBrightness('#2980b9', 20);
+          ctx.globalAlpha = 0.6;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy + seaLevelOffset);
+          ctx.lineTo(sx + (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaLevelOffset);
+          ctx.lineTo(sx, sy + tileHeight * zoom + seaLevelOffset);
+          ctx.lineTo(sx - (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaLevelOffset);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
+        }
+        continue; // always skip water tiles from drawTile
       }
       const { screenX, screenY } = toScreenCoords(tile.x, tile.y, zoom, offsetX, offsetY);
       const renderType = (!showRoads && (tile.type === 'road' || tile.type === 'road_cross' || tile.type === 'road_intersection'))
