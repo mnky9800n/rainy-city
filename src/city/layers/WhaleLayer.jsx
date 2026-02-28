@@ -96,6 +96,12 @@ const WhaleLayer = () => {
         speed: 0.1 + Math.random() * 0.1,
         size: 0.8 + Math.random() * 0.4,
         phase: Math.random() * Math.PI * 2,
+        // Blow state
+        blowTimer: 10 + Math.random() * 20, // seconds until next blow
+        blowing: false,
+        blowElapsed: 0,
+        blowDuration: 2.5, // seconds the blow lasts
+        blowParticles: [], // active spray particles
       });
     }
     whaleStateRef.current = { whales, center };
@@ -186,8 +192,18 @@ const WhaleLayer = () => {
             // wireframe doesn't need wave animation
           }
 
+          // Blow spout particles — rendered in screen space (not child of whale group)
+          const sprayGeom = new THREE.BufferGeometry();
+          sprayGeom.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(300), 3)); // max 100 particles
+          const sprayPoints = new THREE.Points(sprayGeom, new THREE.PointsMaterial({
+            color: 0xddeeff, size: 3, transparent: true, opacity: 0.7,
+            map: sprite, blending: THREE.NormalBlending, depthTest: false,
+          }));
+          sprayPoints.frustumCulled = false;
+          scene.add(sprayPoints);
+
           scene.add(group);
-          state.whaleGroups.push({ group, geoData });
+          state.whaleGroups.push({ group, geoData, sprayPoints });
         }
 
         state.loaded = true;
@@ -294,6 +310,53 @@ const WhaleLayer = () => {
           whale.angle = Math.atan2(ws.center.y - whale.y, ws.center.x - whale.x);
         }
 
+        // --- Blow (spout) behavior ---
+        whale.blowTimer -= dt;
+        if (!whale.blowing && whale.blowTimer <= 0) {
+          // Start a blow
+          whale.blowing = true;
+          whale.blowElapsed = 0;
+          whale.blowParticles = [];
+        }
+
+        if (whale.blowing) {
+          whale.blowElapsed += dt;
+
+          // Spawn spray particles during the first half of the blow
+          if (whale.blowElapsed < whale.blowDuration * 0.4) {
+            for (let p = 0; p < 2; p++) {
+              whale.blowParticles.push({
+                // Offset from whale head in tile space (small random spread)
+                ox: (Math.random() - 0.5) * 0.3,
+                oy: (Math.random() - 0.5) * 0.3,
+                vx: (Math.random() - 0.5) * 0.4,
+                vy: -1.5 - Math.random() * 1.0, // spray upward (screen -Y = Three.js +Y)
+                life: 0,
+                maxLife: 0.8 + Math.random() * 0.6,
+                size: 1.5 + Math.random() * 2,
+              });
+            }
+          }
+
+          // Update particles
+          for (const p of whale.blowParticles) {
+            p.life += dt;
+            p.ox += p.vx * dt;
+            p.oy += p.vy * dt;
+            p.vy += 0.8 * dt; // gravity pulls spray back down
+            p.vx *= 0.98; // air resistance
+          }
+
+          // Remove dead particles
+          whale.blowParticles = whale.blowParticles.filter(p => p.life < p.maxLife);
+
+          // End blow
+          if (whale.blowElapsed >= whale.blowDuration && whale.blowParticles.length === 0) {
+            whale.blowing = false;
+            whale.blowTimer = 15 + Math.random() * 25; // next blow in 15-40 seconds
+          }
+        }
+
         // --- Position: tile coords -> isometric screen coords -> Three.js coords ---
         // Isometric screen position (same formula as TerrainLayer)
         const screenX = (whale.x - whale.y) * (tileWidth / 2) * z + offsetX;
@@ -361,6 +424,43 @@ const WhaleLayer = () => {
           obj.geometry.attributes.position.needsUpdate = true;
           obj.geometry.attributes.color.needsUpdate = true;
         }
+
+        // --- Blow spout spray rendering ---
+        const { sprayPoints } = whaleGroups[i];
+        const sprayPositions = sprayPoints.geometry.attributes.position.array;
+        let sprayIdx = 0;
+
+        if (whale.blowing && whale.blowParticles.length > 0) {
+          // The whale head is at the front (nose at +Z in model space, ~13 units).
+          // Position spray at the whale's screen position, offset toward the head.
+          const headOffset = 5 * s; // blowhole is ~1/3 back from nose toward tail
+          // Head screen position: offset along heading direction
+          const headScreenX = tx + Math.cos(screenAngle) * headOffset;
+          const headScreenY = ty + Math.sin(screenAngle) * headOffset;
+
+          for (const p of whale.blowParticles) {
+            if (sprayIdx >= 300) break; // max particles * 3 coords
+            const alpha = 1 - (p.life / p.maxLife);
+            // Particle position in screen space relative to head
+            sprayPositions[sprayIdx++] = headScreenX + p.ox * z * tileWidth * 0.5;
+            sprayPositions[sprayIdx++] = headScreenY - p.oy * z * tileWidth * 0.5; // -oy because spray goes up (+Y in Three.js)
+            sprayPositions[sprayIdx++] = 0;
+          }
+
+          sprayPoints.material.opacity = 0.7;
+          sprayPoints.material.size = 3 * z;
+        }
+
+        // Zero out remaining positions
+        for (let j = sprayIdx; j < sprayPositions.length; j++) {
+          sprayPositions[j] = 0;
+        }
+        // Hide unused particles by moving them off-screen
+        for (let j = sprayIdx; j < sprayPositions.length; j += 3) {
+          sprayPositions[j] = -99999;
+        }
+        sprayPoints.geometry.attributes.position.needsUpdate = true;
+        sprayPoints.geometry.setDrawRange(0, Math.ceil(sprayIdx / 3));
       }
 
       renderer.render(scene, camera);
