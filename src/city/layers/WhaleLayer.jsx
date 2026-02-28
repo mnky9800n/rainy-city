@@ -159,23 +159,22 @@ const WhaleLayer = () => {
             const geometry = geom.clone();
             const basePositions = new Float32Array(geometry.attributes.position.array);
 
-            // Filled mesh
+            // Filled mesh — slate grey, solid
             const mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({
-              color: 0x0255aa, transparent: true, opacity: 0.3,
-              side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthTest: false,
+              color: 0x708090, side: THREE.DoubleSide, depthTest: false,
             }));
 
-            // Wireframe
+            // Wireframe — light grey
             const wfGeom = new THREE.WireframeGeometry(geometry);
             const wireframe = new THREE.LineSegments(wfGeom, new THREE.LineBasicMaterial({
-              transparent: true, opacity: 0.02, depthTest: false,
+              color: 0x9aaabb,
+              transparent: true, opacity: 0.04, depthTest: false,
             }));
 
-            // Particles
+            // Particles — grey tones
             const points = new THREE.Points(geometry, new THREE.PointsMaterial({
               size: 0.6, alphaTest: 0.5, transparent: true,
-              blending: THREE.AdditiveBlending, map: sprite,
-              vertexColors: true, depthTest: false,
+              map: sprite, vertexColors: true, depthTest: false,
             }));
 
             group.add(mesh);
@@ -351,11 +350,10 @@ const WhaleLayer = () => {
             positions[j + 1] = by + waveY;
             positions[j + 2] = bz;
 
+            // Grey with subtle lightness variation along the body
             const color = new THREE.Color();
-            color.setHSL(
-              0.65 * clamp(Math.sin(0.1 * bz + elapsed + whale.phase), 0.6, 1),
-              1, 0.4
-            );
+            const lightness = 0.35 + 0.15 * clamp(Math.sin(0.1 * bz + elapsed + whale.phase), 0, 1);
+            color.setHSL(0, 0, lightness);
             colors.push(color.r, color.g, color.b);
           }
 
