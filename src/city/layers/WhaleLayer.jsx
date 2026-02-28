@@ -51,7 +51,7 @@ function initWhaleInWater(elevationMap) {
 
 const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
 
-const WhaleLayer = () => {
+const WhaleLayer = ({ onWhaleClick }) => {
   const containerRef = useRef(null);
   const { dimensions, zoom, panX, panY, elevationMap } = useCityContext();
 
@@ -61,6 +61,9 @@ const WhaleLayer = () => {
 
   const elevationRef = useRef(elevationMap);
   useEffect(() => { elevationRef.current = elevationMap; }, [elevationMap]);
+
+  const onWhaleClickRef = useRef(onWhaleClick);
+  useEffect(() => { onWhaleClickRef.current = onWhaleClick; }, [onWhaleClick]);
 
   const threeRef = useRef(null);
   const whaleStateRef = useRef(null);
@@ -468,8 +471,39 @@ const WhaleLayer = () => {
 
     rafId = requestAnimationFrame(tick);
 
+    // Click handler for whale raycasting — listen on window so we don't
+    // block panning (the whale layer keeps pointerEvents: "none")
+    const handleClick = (e) => {
+      if (!threeRef.current || !threeRef.current.loaded || !onWhaleClickRef.current) return;
+
+      const rect = renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      );
+
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(mouse, camera);
+
+      // Test against all whale group meshes
+      const meshes = [];
+      for (const { group } of threeRef.current.whaleGroups) {
+        group.traverse((child) => {
+          if (child.isMesh) meshes.push(child);
+        });
+      }
+
+      const intersects = raycaster.intersectObjects(meshes, false);
+      if (intersects.length > 0) {
+        onWhaleClickRef.current(e.clientX, e.clientY);
+      }
+    };
+
+    window.addEventListener("click", handleClick);
+
     return () => {
       cancelAnimationFrame(rafId);
+      window.removeEventListener("click", handleClick);
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
