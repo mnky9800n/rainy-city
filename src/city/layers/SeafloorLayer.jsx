@@ -5,21 +5,21 @@ import { toScreenCoords, drawTile } from '../rendering.js';
 
 const SeafloorLayer = () => {
   const canvasRef = useRef(null);
-  const { dimensions, zoom, textures, tiles, elevationMap } = useCityContext();
+  const { dimensions, zoom, panX, panY, textures, tiles, elevationMap } = useCityContext();
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
-    const { offsetX, offsetY } = getOffsets(dimensions, zoom);
+    const { offsetX, offsetY } = getOffsets(dimensions, zoom, panX, panY);
 
     for (const tile of tiles) {
       if (tile.type !== 'water') continue;
       const { screenX, screenY } = toScreenCoords(tile.x, tile.y, zoom, offsetX, offsetY);
       drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.corners, zoom, textures);
     }
-  }, [dimensions, zoom, textures, tiles, elevationMap]);
+  }, [dimensions, zoom, panX, panY, textures, tiles, elevationMap]);
 
   return (
     <canvas

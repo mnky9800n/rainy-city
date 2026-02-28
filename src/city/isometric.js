@@ -1,10 +1,10 @@
 import { tileWidth, tileHeight, gridWidth, gridHeight } from './constants.js';
 
 // Compute canvas offsets so the grid is centered
-export function getOffsets(dimensions, zoom) {
+export function getOffsets(dimensions, zoom, panX = 0, panY = 0) {
   const gridPixelHeight = (gridWidth + gridHeight) * (tileHeight / 2) * zoom;
-  const offsetX = dimensions.width / 2;
-  const offsetY = dimensions.height / 2 - gridPixelHeight / 2;
+  const offsetX = dimensions.width / 2 + panX;
+  const offsetY = dimensions.height / 2 - gridPixelHeight / 2 + panY;
   return { offsetX, offsetY };
 }
 

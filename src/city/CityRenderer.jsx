@@ -7,7 +7,9 @@ import DebugLayer from './layers/DebugLayer.jsx';
 
 const ZoomContainer = ({ children }) => {
   const containerRef = useRef(null);
-  const { setZoom } = useCityContext();
+  const { setZoom, setPanX, setPanY } = useCityContext();
+  const isDragging = useRef(false);
+  const lastMouse = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     const el = containerRef.current;
@@ -27,9 +29,33 @@ const ZoomContainer = ({ children }) => {
     return () => el.removeEventListener("wheel", handleWheel);
   }, [setZoom]);
 
+  const handleMouseDown = (e) => {
+    isDragging.current = true;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+    containerRef.current.style.cursor = "grabbing";
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging.current) return;
+    const dx = e.clientX - lastMouse.current.x;
+    const dy = e.clientY - lastMouse.current.y;
+    lastMouse.current = { x: e.clientX, y: e.clientY };
+    setPanX((px) => px + dx);
+    setPanY((py) => py + dy);
+  };
+
+  const handleMouseUp = () => {
+    isDragging.current = false;
+    containerRef.current.style.cursor = "grab";
+  };
+
   return (
     <div
       ref={containerRef}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
       style={{
         position: "absolute",
         top: 0,
@@ -38,6 +64,7 @@ const ZoomContainer = ({ children }) => {
         height: "100vh",
         background: "#222",
         zIndex: 1,
+        cursor: "grab",
       }}
     >
       {children}

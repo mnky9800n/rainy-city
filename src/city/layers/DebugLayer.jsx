@@ -7,7 +7,7 @@ import { tileWidth, tileHeight, elevationScale, gridWidth, gridHeight } from '..
 const DebugLayer = () => {
   const canvasRef = useRef(null);
   const {
-    dimensions, zoom, tiles, elevationMap, cornerMatrix,
+    dimensions, zoom, panX, panY, tiles, elevationMap, cornerMatrix,
     hoveredTile, setHoveredTile, debugMode,
   } = useCityContext();
 
@@ -19,7 +19,7 @@ const DebugLayer = () => {
 
     if (!debugMode || !hoveredTile) return;
 
-    const { offsetX, offsetY } = getOffsets(dimensions, zoom);
+    const { offsetX, offsetY } = getOffsets(dimensions, zoom, panX, panY);
 
     for (const tile of tiles) {
       if (tile.type === 'water') continue;
@@ -40,7 +40,7 @@ const DebugLayer = () => {
         break;
       }
     }
-  }, [dimensions, zoom, tiles, hoveredTile, debugMode]);
+  }, [dimensions, zoom, panX, panY, tiles, hoveredTile, debugMode]);
 
   // Handle click and mousemove events
   useEffect(() => {
@@ -50,7 +50,7 @@ const DebugLayer = () => {
 
     const handleClick = (e) => {
       const rect = canvas.getBoundingClientRect();
-      const { offsetX, offsetY } = getOffsets(dimensions, zoom);
+      const { offsetX, offsetY } = getOffsets(dimensions, zoom, panX, panY);
       const { tileX, tileY } = screenToTile(
         e.clientX - rect.left, e.clientY - rect.top, zoom, offsetX, offsetY
       );
@@ -67,7 +67,7 @@ const DebugLayer = () => {
 
     const handleMouseMove = (e) => {
       const rect = canvas.getBoundingClientRect();
-      const { offsetX, offsetY } = getOffsets(dimensions, zoom);
+      const { offsetX, offsetY } = getOffsets(dimensions, zoom, panX, panY);
       const { tileX, tileY } = screenToTile(
         e.clientX - rect.left, e.clientY - rect.top, zoom, offsetX, offsetY
       );
@@ -85,7 +85,7 @@ const DebugLayer = () => {
       canvas.removeEventListener("click", handleClick);
       canvas.removeEventListener("mousemove", handleMouseMove);
     };
-  }, [debugMode, dimensions, zoom, elevationMap, cornerMatrix, setHoveredTile]);
+  }, [debugMode, dimensions, zoom, panX, panY, elevationMap, cornerMatrix, setHoveredTile]);
 
   return (
     <canvas

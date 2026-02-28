@@ -17,6 +17,8 @@ export function CityProvider({ debugMode = false, children }) {
     height: window.innerHeight,
   });
   const [zoom, setZoom] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
   const [textures, setTextures] = useState({});
   const [hoveredTile, setHoveredTile] = useState(null);
 
@@ -104,6 +106,10 @@ export function CityProvider({ debugMode = false, children }) {
     dimensions,
     zoom,
     setZoom,
+    panX,
+    setPanX,
+    panY,
+    setPanY,
     textures,
     coastline,
     elevationMap,

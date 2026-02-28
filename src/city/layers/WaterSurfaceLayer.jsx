@@ -6,14 +6,14 @@ import { adjustBrightness } from '../rendering.js';
 
 const WaterSurfaceLayer = () => {
   const canvasRef = useRef(null);
-  const { dimensions, zoom, tiles } = useCityContext();
+  const { dimensions, zoom, panX, panY, tiles } = useCityContext();
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
-    const { offsetX, offsetY } = getOffsets(dimensions, zoom);
+    const { offsetX, offsetY } = getOffsets(dimensions, zoom, panX, panY);
     const seaLevelOffset = 0.5 * elevationScale * zoom;
 
     ctx.fillStyle = adjustBrightness('#2980b9', 20);
@@ -33,7 +33,7 @@ const WaterSurfaceLayer = () => {
     }
 
     ctx.globalAlpha = 1.0;
-  }, [dimensions, zoom, tiles]);
+  }, [dimensions, zoom, panX, panY, tiles]);
 
   return (
     <canvas
