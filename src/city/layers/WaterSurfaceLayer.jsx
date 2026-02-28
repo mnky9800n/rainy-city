@@ -8,32 +8,13 @@ const WaterSurfaceLayer = () => {
   const canvasRef = useRef(null);
   const { dimensions, zoom, panX, panY, tiles } = useCityContext();
 
+  // Water surface is now drawn in TerrainLayer for correct depth sorting.
+  // This canvas is kept as a placeholder for future water effects (e.g. animation).
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, dimensions.width, dimensions.height);
-
-    const { offsetX, offsetY } = getOffsets(dimensions, zoom, panX, panY);
-    const seaLevelOffset = 0.5 * elevationScale * zoom;
-
-    ctx.fillStyle = adjustBrightness('#2980b9', 20);
-    ctx.globalAlpha = 0.6;
-
-    for (const tile of tiles) {
-      if (tile.type !== 'water') continue;
-      const sx = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
-      const sy = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
-      ctx.beginPath();
-      ctx.moveTo(sx, sy + seaLevelOffset);
-      ctx.lineTo(sx + (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaLevelOffset);
-      ctx.lineTo(sx, sy + tileHeight * zoom + seaLevelOffset);
-      ctx.lineTo(sx - (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaLevelOffset);
-      ctx.closePath();
-      ctx.fill();
-    }
-
-    ctx.globalAlpha = 1.0;
-  }, [dimensions, zoom, panX, panY, tiles]);
+  }, [dimensions]);
 
   return (
     <canvas

@@ -57,12 +57,14 @@ export function drawTile(ctx, x, y, elevation, type, corners, zoom, textures) {
   // Draw cliff sides only for land
   if (elevation > 0 && type !== 'water') {
     const cliffColor = '#8B7355';
+    // Extend cliffs below ground level to meet the water surface
+    const cliffExtra = 0.5 * elevationScale * zoom;
 
     ctx.fillStyle = adjustBrightness(cliffColor, -20);
     ctx.beginPath();
     ctx.moveTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset);
-    ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom);
-    ctx.lineTo(x, y + tileHeight * zoom);
+    ctx.lineTo(x - (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + cliffExtra);
+    ctx.lineTo(x, y + tileHeight * zoom + cliffExtra);
     ctx.lineTo(x, y + tileHeight * zoom + yOffset);
     ctx.closePath();
     ctx.fill();
@@ -70,8 +72,8 @@ export function drawTile(ctx, x, y, elevation, type, corners, zoom, textures) {
     ctx.fillStyle = adjustBrightness(cliffColor, -40);
     ctx.beginPath();
     ctx.moveTo(x, y + tileHeight * zoom + yOffset);
-    ctx.lineTo(x, y + tileHeight * zoom);
-    ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom);
+    ctx.lineTo(x, y + tileHeight * zoom + cliffExtra);
+    ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + cliffExtra);
     ctx.lineTo(x + (tileWidth / 2) * zoom, y + (tileHeight / 2) * zoom + yOffset);
     ctx.closePath();
     ctx.fill();

@@ -31,4 +31,4 @@ export const gridWidth = 75;
 export const gridHeight = 75;
 
 // Height of each elevation level in pixels
-export const elevationScale = 16;
+export const elevationScale = 24;
