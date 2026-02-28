@@ -30,10 +30,12 @@ const RainCanvas = () => {
           drop.x = Math.random() * width;
         }
       });
-      requestAnimationFrame(draw);
+      frameId = requestAnimationFrame(draw);
     }
 
-    draw();
+    let frameId = requestAnimationFrame(draw);
+
+    return () => cancelAnimationFrame(frameId);
   }, []);
 
   return (

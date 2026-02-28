@@ -18,3 +18,7 @@ npm start
 ```
 
 you might have to add other stuff. At the current moment, I am still figuring this all out.
+
+## road map
+
+currently working on a refactor to make the layers of the map more abstract
