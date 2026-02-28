@@ -137,11 +137,21 @@ const DebugLayer = () => {
       }
     };
 
+    const handleContextMenu = (e) => {
+      if (drawRoadsMode && roadStartTile) {
+        e.preventDefault();
+        setRoadStartTile(null);
+        setRoadPreviewPath(null);
+      }
+    };
+
     canvas.addEventListener("click", handleClick);
     canvas.addEventListener("mousemove", handleMouseMove);
+    canvas.addEventListener("contextmenu", handleContextMenu);
     return () => {
       canvas.removeEventListener("click", handleClick);
       canvas.removeEventListener("mousemove", handleMouseMove);
+      canvas.removeEventListener("contextmenu", handleContextMenu);
     };
   }, [interactionEnabled, debugMode, drawRoadsMode, dimensions, zoom, panX, panY, elevationMap, cornerMatrix, setHoveredTile, roadStartTile, setRoadStartTile, setRoadPreviewPath, placeRoad]);
 
