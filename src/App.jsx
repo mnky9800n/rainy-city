@@ -86,6 +86,7 @@ const App = () => {
   const [showRoads, setShowRoads] = useState(true);
   const [showRain, setShowRain] = useState(true);
   const [drawRoadsMode, setDrawRoadsMode] = useState(false);
+  const [destructionMode, setDestructionMode] = useState(false);
   const resetRoadsRef = useRef(null);
 
   const playSounds = () => {
@@ -108,6 +109,7 @@ const App = () => {
         showRoads={showRoads}
         showDebugLayer={showDebugLayer}
         drawRoadsMode={drawRoadsMode}
+        destructionMode={destructionMode}
         resetRoadsRef={resetRoadsRef}
       />
       {showRain && <RainCanvas />}
@@ -173,7 +175,8 @@ const App = () => {
               <label><input type="checkbox" checked={showRoads} onChange={() => setShowRoads(!showRoads)} /> Roads</label><br />
               <label><input type="checkbox" checked={showDebugLayer} onChange={() => setShowDebugLayer(!showDebugLayer)} /> Debug Layer</label><br />
               <label><input type="checkbox" checked={showRain} onChange={() => setShowRain(!showRain)} /> Show Rain</label><br />
-              <label><input type="checkbox" checked={drawRoadsMode} onChange={() => setDrawRoadsMode(!drawRoadsMode)} /> Draw Roads</label>
+              <label><input type="checkbox" checked={drawRoadsMode} onChange={() => { setDrawRoadsMode(!drawRoadsMode); if (!drawRoadsMode) setDestructionMode(false); }} /> Draw Roads</label><br />
+              <label><input type="checkbox" checked={destructionMode} onChange={() => { setDestructionMode(!destructionMode); if (!destructionMode) setDrawRoadsMode(false); }} /> Destruction</label>
               <div style={{ marginTop: 4, marginLeft: 20, display: 'flex', gap: 4 }}>
                 <button
                   onClick={() => resetRoadsRef.current?.drawRoadGrid()}

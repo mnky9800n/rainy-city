@@ -12,9 +12,12 @@ const DebugLayer = () => {
     hoveredTile, setHoveredTile, debugMode,
     drawRoadsMode, roadStartTile, setRoadStartTile,
     roadPreviewPath, setRoadPreviewPath, placeRoad,
+    destructionMode, destroyTile,
   } = useCityContext();
 
-  const interactionEnabled = debugMode || drawRoadsMode;
+  const interactionEnabled = debugMode || drawRoadsMode || destructionMode;
+
+  const bulldozerCursor = 'url(/bulldozer.png) 16 16, auto';
 
   // Draw hover highlight and road preview
   useEffect(() => {
@@ -54,17 +57,18 @@ const DebugLayer = () => {
       }
     }
 
-    // Draw hover highlight for debug or draw roads mode
-    if ((debugMode || drawRoadsMode) && hoveredTile) {
+    // Draw hover highlight for debug, draw roads, or destruction mode
+    if ((debugMode || drawRoadsMode || destructionMode) && hoveredTile) {
+      const highlightColor = destructionMode ? 'red' : 'yellow';
       for (const tile of tiles) {
         if (tile.type === 'water') continue;
         if (tile.x === hoveredTile.x && tile.y === hoveredTile.y) {
-          drawDiamond(tile.x, tile.y, tile.elevation, 'yellow', 0.5);
+          drawDiamond(tile.x, tile.y, tile.elevation, highlightColor, 0.5);
           break;
         }
       }
     }
-  }, [dimensions, zoom, panX, panY, tiles, hoveredTile, debugMode, drawRoadsMode, roadStartTile, roadPreviewPath, elevationMap]);
+  }, [dimensions, zoom, panX, panY, tiles, hoveredTile, debugMode, drawRoadsMode, destructionMode, roadStartTile, roadPreviewPath, elevationMap]);
 
   // Handle click and mousemove events
   useEffect(() => {
@@ -85,6 +89,13 @@ const DebugLayer = () => {
 
       if (tileX < 0 || tileX >= gridWidth || tileY < 0 || tileY >= gridHeight) {
         if (debugMode) console.log(`Click outside grid bounds: X:${tileX}, Y:${tileY}`);
+        return;
+      }
+
+      if (destructionMode) {
+        const elevation = elevationMap[tileY][tileX];
+        if (elevation <= 0) return; // Can't destroy water tiles
+        destroyTile(tileX, tileY);
         return;
       }
 
@@ -153,7 +164,7 @@ const DebugLayer = () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("contextmenu", handleContextMenu);
     };
-  }, [interactionEnabled, debugMode, drawRoadsMode, dimensions, zoom, panX, panY, elevationMap, cornerMatrix, setHoveredTile, roadStartTile, setRoadStartTile, setRoadPreviewPath, placeRoad]);
+  }, [interactionEnabled, debugMode, drawRoadsMode, destructionMode, destroyTile, dimensions, zoom, panX, panY, elevationMap, cornerMatrix, setHoveredTile, roadStartTile, setRoadStartTile, setRoadPreviewPath, placeRoad]);
 
   // Clear road drawing state when mode is disabled
   useEffect(() => {
@@ -177,7 +188,7 @@ const DebugLayer = () => {
         display: "block",
         zIndex: 5,
         pointerEvents: interactionEnabled ? "auto" : "none",
-        cursor: drawRoadsMode ? "crosshair" : debugMode ? "crosshair" : "default",
+        cursor: destructionMode ? bulldozerCursor : drawRoadsMode ? "crosshair" : debugMode ? "crosshair" : "default",
       }}
     />
   );

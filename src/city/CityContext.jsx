@@ -12,7 +12,7 @@ export function useCityContext() {
   return ctx;
 }
 
-export function CityProvider({ debugMode = false, showWaterSurface = true, drawRoadsMode = false, resetRoadsRef = null, children }) {
+export function CityProvider({ debugMode = false, showWaterSurface = true, drawRoadsMode = false, destructionMode = false, resetRoadsRef = null, children }) {
   const [dimensions, setDimensions] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -106,6 +106,18 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     setRoadPreviewPath(null);
   }, [baseElevation]);
 
+  const destroyTile = useCallback((x, y) => {
+    const newElevation = elevationMap.map(row => [...row]);
+    newElevation[y][x] = baseElevation[y][x];
+    taperElevation(newElevation, gridWidth, gridHeight);
+
+    const newRoads = new Map(roadSet);
+    newRoads.delete(`${x},${y}`);
+
+    setElevationMap(newElevation);
+    setRoadSet(newRoads);
+  }, [elevationMap, baseElevation, roadSet]);
+
   // Expose callbacks to parent via ref
   useEffect(() => {
     if (resetRoadsRef) {
@@ -179,6 +191,8 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     debugMode,
     showWaterSurface,
     drawRoadsMode,
+    destructionMode,
+    destroyTile,
     roadStartTile,
     setRoadStartTile,
     roadPreviewPath,
