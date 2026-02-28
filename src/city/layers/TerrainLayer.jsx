@@ -4,7 +4,7 @@ import { getOffsets } from '../isometric.js';
 import { tileWidth, tileHeight, elevationScale } from '../constants.js';
 import { toScreenCoords, drawTile, adjustBrightness } from '../rendering.js';
 
-const TerrainLayer = () => {
+const TerrainLayer = ({ showRoads = true }) => {
   const canvasRef = useRef(null);
   const { dimensions, zoom, panX, panY, textures, tiles, elevationMap, showWaterSurface } = useCityContext();
 
@@ -35,9 +35,11 @@ const TerrainLayer = () => {
         continue;
       }
       const { screenX, screenY } = toScreenCoords(tile.x, tile.y, zoom, offsetX, offsetY);
-      drawTile(ctx, screenX, screenY, tile.elevation, tile.type, tile.corners, zoom, textures);
+      const renderType = (!showRoads && (tile.type === 'road' || tile.type === 'road_cross' || tile.type === 'road_intersection'))
+        ? 'grass' : tile.type;
+      drawTile(ctx, screenX, screenY, tile.elevation, renderType, tile.corners, zoom, textures);
     }
-  }, [dimensions, zoom, panX, panY, textures, tiles, elevationMap, showWaterSurface]);
+  }, [dimensions, zoom, panX, panY, textures, tiles, elevationMap, showWaterSurface, showRoads]);
 
   return (
     <canvas

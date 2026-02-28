@@ -77,6 +77,7 @@ const CityRenderer = ({
   showSeafloor = true,
   showWaterSurface = true,
   showTerrain = true,
+  showRoads = true,
   showDebugLayer = true,
 }) => {
   return (
@@ -84,7 +85,7 @@ const CityRenderer = ({
       <ZoomContainer>
         {showSeafloor && <SeafloorLayer />}
         {showWaterSurface && <WaterSurfaceLayer />}
-        {showTerrain && <TerrainLayer />}
+        {showTerrain && <TerrainLayer showRoads={showRoads} />}
         {showDebugLayer && <DebugLayer />}
       </ZoomContainer>
     </CityProvider>

@@ -80,11 +80,21 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, child
       for (let y = 0; y < gridHeight; y++) {
         const elevation = elevationMap[y][x];
         let visualType = elevation <= 0 ? "water" : "grass";
+        const corners = getTileCornerHeights(elevationMap, x, y);
         const roadType = roadSet.get(`${x},${y}`);
         if (visualType === "grass" && roadType) {
-          visualType = roadType;
+          // Only place road if no cross-slope (slope perpendicular to road direction)
+          // road (along y): enters N-E edge, exits W-S edge. Cross-slope if N≠E or W≠S
+          // road_cross (along x): enters N-W edge, exits E-S edge. Cross-slope if N≠W or E≠S
+          const hasCrossSlope =
+            roadType === "road" ? (corners.n !== corners.e || corners.w !== corners.s) :
+            roadType === "road_cross" ? (corners.n !== corners.w || corners.e !== corners.s) :
+            (corners.n !== corners.e || corners.w !== corners.s || corners.n !== corners.w || corners.e !== corners.s);
+
+          if (!hasCrossSlope) {
+            visualType = roadType;
+          }
         }
-        const corners = getTileCornerHeights(elevationMap, x, y);
 
         cornerMatrix[y][x] = corners;
         tiles.push({ x, y, elevation, type: visualType, corners });

@@ -83,6 +83,7 @@ const App = () => {
   const [showWaterSurface, setShowWaterSurface] = useState(true);
   const [showTerrain, setShowTerrain] = useState(true);
   const [showDebugLayer, setShowDebugLayer] = useState(true);
+  const [showRoads, setShowRoads] = useState(true);
   const [showRain, setShowRain] = useState(true);
 
   const playSounds = () => {
@@ -102,6 +103,7 @@ const App = () => {
         showSeafloor={showSeafloor}
         showWaterSurface={showWaterSurface}
         showTerrain={showTerrain}
+        showRoads={showRoads}
         showDebugLayer={showDebugLayer}
       />
       {showRain && <RainCanvas />}
@@ -164,6 +166,7 @@ const App = () => {
               <label><input type="checkbox" checked={showSeafloor} onChange={() => setShowSeafloor(!showSeafloor)} /> Seafloor</label><br />
               <label><input type="checkbox" checked={showWaterSurface} onChange={() => setShowWaterSurface(!showWaterSurface)} /> Water Surface</label><br />
               <label><input type="checkbox" checked={showTerrain} onChange={() => setShowTerrain(!showTerrain)} /> Terrain</label><br />
+              <label><input type="checkbox" checked={showRoads} onChange={() => setShowRoads(!showRoads)} /> Roads</label><br />
               <label><input type="checkbox" checked={showDebugLayer} onChange={() => setShowDebugLayer(!showDebugLayer)} /> Debug Layer</label><br />
               <label><input type="checkbox" checked={showRain} onChange={() => setShowRain(!showRain)} /> Show Rain</label>
             </div>
