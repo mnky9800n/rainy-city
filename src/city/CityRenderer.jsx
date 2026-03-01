@@ -1,9 +1,11 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { CityProvider, useCityContext } from './CityContext.jsx';
 import SeafloorLayer from './layers/SeafloorLayer.jsx';
 import WaterSurfaceLayer from './layers/WaterSurfaceLayer.jsx';
 import TerrainLayer from './layers/TerrainLayer.jsx';
+import WhaleLayer from './layers/WhaleLayer.jsx';
 import DebugLayer from './layers/DebugLayer.jsx';
+import InfoPopup from './InfoPopup.jsx';
 
 const ZoomContainer = ({ children }) => {
   const containerRef = useRef(null);
@@ -83,14 +85,35 @@ const CityRenderer = ({
   destructionMode = false,
   resetRoadsRef = null,
 }) => {
+  const [infoPopup, setInfoPopup] = useState(null);
+
+  const handleWhaleClick = useCallback((screenX, screenY) => {
+    setInfoPopup({
+      title: "Project CETI",
+      logoUrl: "https://cdn.prod.website-files.com/643ddd7ffdf12273933a8cec/645d24eb63dfb01f70696649_logo-ceti.svg",
+      description: "Project CETI is a nonprofit initiative using advanced AI and linguistics to decode sperm whale communication, with the goal of understanding what these animals are saying to each other.",
+      linkUrl: "https://www.projectceti.org/",
+      linkText: "Visit projectceti.org",
+      screenX,
+      screenY,
+    });
+  }, []);
+
   return (
     <CityProvider debugMode={debugMode} showWaterSurface={showWaterSurface} drawRoadsMode={drawRoadsMode} destructionMode={destructionMode} resetRoadsRef={resetRoadsRef}>
       <ZoomContainer>
         {showSeafloor && <SeafloorLayer />}
         {showWaterSurface && <WaterSurfaceLayer />}
+        <WhaleLayer onWhaleClick={handleWhaleClick} />
         {showTerrain && <TerrainLayer showRoads={showRoads} />}
         {showDebugLayer && <DebugLayer />}
       </ZoomContainer>
+      {infoPopup && (
+        <InfoPopup
+          {...infoPopup}
+          onClose={() => setInfoPopup(null)}
+        />
+      )}
     </CityProvider>
   );
 };

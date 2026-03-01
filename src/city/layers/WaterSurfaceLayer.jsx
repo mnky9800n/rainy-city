@@ -1,15 +1,12 @@
 import React, { useRef, useEffect } from "react";
 import { useCityContext } from '../CityContext.jsx';
-import { getOffsets } from '../isometric.js';
-import { tileWidth, tileHeight, elevationScale } from '../constants.js';
-import { adjustBrightness } from '../rendering.js';
 
 const WaterSurfaceLayer = () => {
   const canvasRef = useRef(null);
-  const { dimensions, zoom, panX, panY, tiles } = useCityContext();
+  const { dimensions } = useCityContext();
 
-  // Water surface is now drawn in TerrainLayer for correct depth sorting.
-  // This canvas is kept as a placeholder for future water effects (e.g. animation).
+  // Water surface is drawn in TerrainLayer for correct depth sorting.
+  // This canvas is kept as a placeholder for future water effects.
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
