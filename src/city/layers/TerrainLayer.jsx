@@ -3,10 +3,11 @@ import { useCityContext } from '../CityContext.jsx';
 import { getOffsets } from '../isometric.js';
 import { tileWidth, tileHeight, elevationScale } from '../constants.js';
 import { toScreenCoords, drawTile, adjustBrightness } from '../rendering.js';
+import { buildingTypes } from '../buildings.js';
 
 const TerrainLayer = ({ showRoads = true }) => {
   const canvasRef = useRef(null);
-  const { dimensions, zoom, panX, panY, textures, tiles, elevationMap, showWaterSurface } = useCityContext();
+  const { dimensions, zoom, panX, panY, textures, tiles, elevationMap, showWaterSurface, buildingMap, buildingSprites } = useCityContext();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -40,8 +41,28 @@ const TerrainLayer = ({ showRoads = true }) => {
       const renderType = (!showRoads && (tile.type === 'road' || tile.type === 'road_cross' || tile.type === 'road_intersection'))
         ? 'grass' : tile.type;
       drawTile(ctx, screenX, screenY, tile.elevation, renderType, tile.corners, zoom, textures);
+
+      // Draw building sprite at the south corner tile of the footprint
+      const building = buildingMap.get(`${tile.x},${tile.y}`);
+      if (building) {
+        const bType = buildingTypes[building.type];
+        const [fw, fh] = bType.footprint;
+        // Only draw at the south corner (max x + max y in footprint)
+        if (tile.x === building.originX + fw - 1 && tile.y === building.originY + fh - 1) {
+          const sprite = buildingSprites[building.type];
+          if (sprite) {
+            const yOffset = -tile.elevation * elevationScale * zoom;
+            // Bottom-center of sprite aligns to the south point of the footprint diamond
+            const spriteW = bType.spriteWidth * zoom;
+            const spriteH = bType.spriteHeight * zoom;
+            const drawX = screenX - spriteW / 2;
+            const drawY = screenY + yOffset - spriteH + (tileHeight * zoom);
+            ctx.drawImage(sprite, drawX, drawY, spriteW, spriteH);
+          }
+        }
+      }
     }
-  }, [dimensions, zoom, panX, panY, textures, tiles, elevationMap, showWaterSurface, showRoads]);
+  }, [dimensions, zoom, panX, panY, textures, tiles, elevationMap, showWaterSurface, showRoads, buildingMap, buildingSprites]);
 
   return (
     <canvas
