@@ -46,44 +46,20 @@ function adjustColor(hex, percent) {
   return `rgb(${R},${G},${B})`;
 }
 
-// Generate a placeholder isometric block sprite for a building type.
-// Returns an offscreen canvas that can be drawn with ctx.drawImage().
-export function generateBuildingSprite(typeName) {
-  const type = buildingTypes[typeName];
-  if (!type) return null;
-
-  const { spriteWidth, spriteHeight, footprint, color } = type;
-  const [fw, fh] = footprint;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = spriteWidth;
-  canvas.height = spriteHeight;
-  const ctx = canvas.getContext("2d");
-
-  // The isometric diamond base dimensions for this footprint
-  const baseW = fw * tileWidth; // diamond width in pixels (at zoom=1)
-  const baseH = fh * tileHeight; // diamond height in pixels (at zoom=1)
-
-  // Building height is the sprite height minus the base diamond half-height
-  const buildingPixelHeight = spriteHeight - baseH / 2;
-
-  // Center of the sprite horizontally, bottom of the sprite is the south corner
-  const cx = spriteWidth / 2;
-  const bottom = spriteHeight;
-
-  // Diamond corners (south point at bottom-center)
+// Helper: draw an isometric box (walls + flat roof) and return roof corner points.
+// wallHeight is in pixels from the base diamond up.
+function drawIsoBox(ctx, cx, bottom, baseW, baseH, wallHeight, color) {
   const south = { x: cx, y: bottom };
   const east = { x: cx + baseW / 2, y: bottom - baseH / 2 };
   const north = { x: cx, y: bottom - baseH };
   const west = { x: cx - baseW / 2, y: bottom - baseH / 2 };
 
-  // Roof corners (same diamond shifted up by building height)
-  const roofSouth = { x: south.x, y: south.y - buildingPixelHeight };
-  const roofEast = { x: east.x, y: east.y - buildingPixelHeight };
-  const roofNorth = { x: north.x, y: north.y - buildingPixelHeight };
-  const roofWest = { x: west.x, y: west.y - buildingPixelHeight };
+  const roofSouth = { x: south.x, y: south.y - wallHeight };
+  const roofEast = { x: east.x, y: east.y - wallHeight };
+  const roofNorth = { x: north.x, y: north.y - wallHeight };
+  const roofWest = { x: west.x, y: west.y - wallHeight };
 
-  // Left wall (west-south face) — darker
+  // Left wall
   ctx.fillStyle = adjustColor(color, -20);
   ctx.beginPath();
   ctx.moveTo(west.x, west.y);
@@ -93,7 +69,7 @@ export function generateBuildingSprite(typeName) {
   ctx.closePath();
   ctx.fill();
 
-  // Right wall (south-east face) — darkest
+  // Right wall
   ctx.fillStyle = adjustColor(color, -40);
   ctx.beginPath();
   ctx.moveTo(south.x, south.y);
@@ -103,7 +79,7 @@ export function generateBuildingSprite(typeName) {
   ctx.closePath();
   ctx.fill();
 
-  // Roof (top face) — lighter
+  // Top face
   ctx.fillStyle = adjustColor(color, 15);
   ctx.beginPath();
   ctx.moveTo(roofNorth.x, roofNorth.y);
@@ -116,8 +92,6 @@ export function generateBuildingSprite(typeName) {
   // Outlines
   ctx.strokeStyle = "rgba(0,0,0,0.3)";
   ctx.lineWidth = 1;
-
-  // Roof outline
   ctx.beginPath();
   ctx.moveTo(roofNorth.x, roofNorth.y);
   ctx.lineTo(roofEast.x, roofEast.y);
@@ -125,8 +99,6 @@ export function generateBuildingSprite(typeName) {
   ctx.lineTo(roofWest.x, roofWest.y);
   ctx.closePath();
   ctx.stroke();
-
-  // Vertical edges
   ctx.beginPath();
   ctx.moveTo(roofSouth.x, roofSouth.y);
   ctx.lineTo(south.x, south.y);
@@ -135,15 +107,230 @@ export function generateBuildingSprite(typeName) {
   ctx.moveTo(roofEast.x, roofEast.y);
   ctx.lineTo(east.x, east.y);
   ctx.stroke();
-
-  // Bottom edges (visible walls)
   ctx.beginPath();
   ctx.moveTo(west.x, west.y);
   ctx.lineTo(south.x, south.y);
   ctx.lineTo(east.x, east.y);
   ctx.stroke();
 
+  return { south, east, north, west, roofSouth, roofEast, roofNorth, roofWest };
+}
+
+// House: box with a peaked/gabled roof ridge running north-south
+function generateHouseSprite(type) {
+  const { spriteWidth, spriteHeight, footprint, color } = type;
+  const [fw, fh] = footprint;
+  const canvas = document.createElement("canvas");
+  canvas.width = spriteWidth;
+  canvas.height = spriteHeight;
+  const ctx = canvas.getContext("2d");
+
+  const baseW = fw * tileWidth;
+  const baseH = fh * tileHeight;
+  const wallHeight = (spriteHeight - baseH / 2) * 0.55;
+  const cx = spriteWidth / 2;
+  const bottom = spriteHeight;
+
+  const { roofSouth, roofEast, roofNorth, roofWest } = drawIsoBox(ctx, cx, bottom, baseW, baseH, wallHeight, color);
+
+  // Peaked ridge: a point above the roof center
+  const ridgeHeight = (spriteHeight - baseH / 2) - wallHeight;
+  const ridgeN = { x: roofNorth.x, y: roofNorth.y - ridgeHeight };
+  const ridgeS = { x: roofSouth.x, y: roofSouth.y - ridgeHeight };
+
+  // Left roof slope (west face of roof)
+  ctx.fillStyle = adjustColor(color, 5);
+  ctx.beginPath();
+  ctx.moveTo(roofNorth.x, roofNorth.y);
+  ctx.lineTo(roofWest.x, roofWest.y);
+  ctx.lineTo(roofSouth.x, roofSouth.y);
+  ctx.lineTo(ridgeS.x, ridgeS.y);
+  ctx.lineTo(ridgeN.x, ridgeN.y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Right roof slope (east face of roof)
+  ctx.fillStyle = adjustColor(color, -10);
+  ctx.beginPath();
+  ctx.moveTo(roofNorth.x, roofNorth.y);
+  ctx.lineTo(roofEast.x, roofEast.y);
+  ctx.lineTo(roofSouth.x, roofSouth.y);
+  ctx.lineTo(ridgeS.x, ridgeS.y);
+  ctx.lineTo(ridgeN.x, ridgeN.y);
+  ctx.closePath();
+  ctx.fill();
+
+  // Ridge line and roof edges
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(ridgeN.x, ridgeN.y);
+  ctx.lineTo(ridgeS.x, ridgeS.y);
+  ctx.moveTo(ridgeN.x, ridgeN.y);
+  ctx.lineTo(roofWest.x, roofWest.y);
+  ctx.moveTo(ridgeN.x, ridgeN.y);
+  ctx.lineTo(roofEast.x, roofEast.y);
+  ctx.moveTo(ridgeS.x, ridgeS.y);
+  ctx.lineTo(roofWest.x, roofWest.y);
+  ctx.moveTo(ridgeS.x, ridgeS.y);
+  ctx.lineTo(roofEast.x, roofEast.y);
+  ctx.stroke();
+
   return canvas;
+}
+
+// Apartment: tall flat-roofed box with horizontal floor lines
+function generateApartmentSprite(type) {
+  const { spriteWidth, spriteHeight, footprint, color } = type;
+  const [fw, fh] = footprint;
+  const canvas = document.createElement("canvas");
+  canvas.width = spriteWidth;
+  canvas.height = spriteHeight;
+  const ctx = canvas.getContext("2d");
+
+  const baseW = fw * tileWidth;
+  const baseH = fh * tileHeight;
+  const wallHeight = spriteHeight - baseH / 2;
+  const cx = spriteWidth / 2;
+  const bottom = spriteHeight;
+
+  const { south, east, west, roofSouth, roofEast, roofWest } = drawIsoBox(ctx, cx, bottom, baseW, baseH, wallHeight, color);
+
+  // Draw floor separator lines on both visible walls
+  const floors = 4;
+  ctx.strokeStyle = "rgba(0,0,0,0.15)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i < floors; i++) {
+    const t = i / floors;
+    // Left wall floor line
+    const lx1 = west.x + (roofWest.x - west.x) * t;
+    const ly1 = west.y + (roofWest.y - west.y) * t;
+    const lx2 = south.x + (roofSouth.x - south.x) * t;
+    const ly2 = south.y + (roofSouth.y - south.y) * t;
+    ctx.beginPath();
+    ctx.moveTo(lx1, ly1);
+    ctx.lineTo(lx2, ly2);
+    ctx.stroke();
+    // Right wall floor line
+    const rx1 = south.x + (roofSouth.x - south.x) * t;
+    const ry1 = south.y + (roofSouth.y - south.y) * t;
+    const rx2 = east.x + (roofEast.x - east.x) * t;
+    const ry2 = east.y + (roofEast.y - east.y) * t;
+    ctx.beginPath();
+    ctx.moveTo(rx1, ry1);
+    ctx.lineTo(rx2, ry2);
+    ctx.stroke();
+  }
+
+  return canvas;
+}
+
+// Office: two stacked tiers (wider base, narrower top)
+function generateOfficeSprite(type) {
+  const { spriteWidth, spriteHeight, footprint, color } = type;
+  const [fw, fh] = footprint;
+  const canvas = document.createElement("canvas");
+  canvas.width = spriteWidth;
+  canvas.height = spriteHeight;
+  const ctx = canvas.getContext("2d");
+
+  const baseW = fw * tileWidth;
+  const baseH = fh * tileHeight;
+  const totalHeight = spriteHeight - baseH / 2;
+  const cx = spriteWidth / 2;
+  const bottom = spriteHeight;
+
+  // Lower tier: full footprint, 60% of total height
+  const lowerH = totalHeight * 0.6;
+  drawIsoBox(ctx, cx, bottom, baseW, baseH, lowerH, color);
+
+  // Upper tier: 60% footprint, remaining height, sitting on top
+  const upperBaseW = baseW * 0.6;
+  const upperBaseH = baseH * 0.6;
+  const upperH = totalHeight * 0.4;
+  const upperBottom = bottom - lowerH + upperBaseH / 2;
+  drawIsoBox(ctx, cx, upperBottom, upperBaseW, upperBaseH, upperH, adjustColor(color, 10));
+
+  return canvas;
+}
+
+// Landmark: box with a dome on top
+function generateLandmarkSprite(type) {
+  const { spriteWidth, spriteHeight, footprint, color } = type;
+  const [fw, fh] = footprint;
+  const canvas = document.createElement("canvas");
+  canvas.width = spriteWidth;
+  canvas.height = spriteHeight;
+  const ctx = canvas.getContext("2d");
+
+  const baseW = fw * tileWidth;
+  const baseH = fh * tileHeight;
+  const totalHeight = spriteHeight - baseH / 2;
+  const wallHeight = totalHeight * 0.6;
+  const cx = spriteWidth / 2;
+  const bottom = spriteHeight;
+
+  const { roofSouth, roofEast, roofNorth, roofWest } = drawIsoBox(ctx, cx, bottom, baseW, baseH, wallHeight, color);
+
+  // Dome: an ellipse rising from the roof center
+  const domeHeight = totalHeight - wallHeight;
+  const roofCenterX = cx;
+  const roofCenterY = (roofNorth.y + roofSouth.y) / 2;
+  const domeRadiusX = baseW * 0.3;
+  const domeRadiusY = baseH * 0.3;
+
+  // Dome back half (lighter)
+  ctx.fillStyle = adjustColor(color, 5);
+  ctx.beginPath();
+  ctx.ellipse(roofCenterX, roofCenterY, domeRadiusX, domeRadiusY, 0, Math.PI, 0);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dome front half (darker, gives 3D look)
+  ctx.fillStyle = adjustColor(color, -15);
+  ctx.beginPath();
+  ctx.ellipse(roofCenterX, roofCenterY, domeRadiusX, domeRadiusY, 0, 0, Math.PI);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dome vertical rise (the dome extends upward)
+  const domeTop = roofCenterY - domeHeight;
+  ctx.fillStyle = adjustColor(color, 0);
+  ctx.beginPath();
+  ctx.ellipse(roofCenterX, domeTop + domeHeight * 0.5, domeRadiusX, domeHeight * 0.5, 0, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dome highlight
+  ctx.fillStyle = adjustColor(color, 25);
+  ctx.beginPath();
+  ctx.ellipse(roofCenterX - domeRadiusX * 0.2, domeTop + domeHeight * 0.35, domeRadiusX * 0.4, domeHeight * 0.25, -0.3, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.fill();
+
+  // Dome outline
+  ctx.strokeStyle = "rgba(0,0,0,0.3)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(roofCenterX, domeTop + domeHeight * 0.5, domeRadiusX, domeHeight * 0.5, 0, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.stroke();
+
+  return canvas;
+}
+
+// Generate a building sprite based on type. Each type has a distinct shape.
+export function generateBuildingSprite(typeName) {
+  const type = buildingTypes[typeName];
+  if (!type) return null;
+
+  switch (typeName) {
+    case "house": return generateHouseSprite(type);
+    case "apartment": return generateApartmentSprite(type);
+    case "office": return generateOfficeSprite(type);
+    case "landmark": return generateLandmarkSprite(type);
+    default: return generateHouseSprite(type);
+  }
 }
 
 // Generate all placeholder building sprites. Returns a Map<typeName, canvas>.
@@ -221,6 +408,48 @@ export function removeBuildingFromMap(x, y, buildingMap) {
   }
 
   return newMap;
+}
+
+// Auto-fill buildings into all available space within road grid blocks.
+// Packs larger buildings first, then fills remaining gaps with smaller ones.
+export function autoFillBuildings(elevationMap, roadSet, existingBuildingMap) {
+  let buildingMap = new Map(existingBuildingMap);
+
+  // Simple seeded PRNG
+  let seed = 54321;
+  const rand = () => {
+    seed = (seed * 16807 + 0) % 2147483647;
+    return (seed - 1) / 2147483646;
+  };
+
+  // Try building types from largest to smallest
+  const typePriority = ["landmark", "office", "apartment", "house"];
+
+  // Scan the entire grid for open land tiles, try to place buildings
+  for (const typeName of typePriority) {
+    const type = buildingTypes[typeName];
+    const [fw, fh] = type.footprint;
+
+    for (let y = 0; y < gridHeight - fh + 1; y++) {
+      for (let x = 0; x < gridWidth - fw + 1; x++) {
+        // Skip if any tile in footprint is already occupied
+        if (buildingMap.has(`${x},${y}`)) continue;
+
+        // For landmarks, only place occasionally to keep variety
+        if (typeName === "landmark" && rand() > 0.03) continue;
+        // For offices, moderate density
+        if (typeName === "office" && rand() > 0.15) continue;
+        // For apartments vs houses, randomize the mix
+        if (typeName === "apartment" && rand() > 0.5) continue;
+
+        if (canPlaceBuilding(x, y, typeName, elevationMap, roadSet, buildingMap)) {
+          buildingMap = placeBuildingInMap(x, y, typeName, buildingMap);
+        }
+      }
+    }
+  }
+
+  return buildingMap;
 }
 
 // Auto-place buildings near roads on flat terrain.

@@ -202,6 +202,12 @@ const App = () => {
                   Draw Road Grid
                 </button>
                 <button
+                  onClick={() => resetRoadsRef.current?.fillBuildings()}
+                  style={{ padding: '2px 8px', fontSize: 12, background: '#556b2f', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Add Buildings
+                </button>
+                <button
                   onClick={() => resetRoadsRef.current?.resetRoads()}
                   style={{ padding: '2px 8px', fontSize: 12, background: '#555', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                 >
