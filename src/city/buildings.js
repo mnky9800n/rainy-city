@@ -13,9 +13,9 @@ export const buildingTypes = {
     color: "#a0522d",
   },
   apartment: {
-    footprint: [1, 1],
-    spriteWidth: 64,
-    spriteHeight: 112,
+    footprint: [2, 2],
+    spriteWidth: 128,
+    spriteHeight: 192,
     color: "#708090",
   },
   office: {
@@ -319,6 +319,138 @@ function generateLandmarkSprite(type) {
   return canvas;
 }
 
+// Load a spritesheet image and slice it into 9 cells (3x3 grid).
+// Detects gaps between buildings to find actual cell boundaries rather than
+// assuming uniform grid spacing. Removes near-invisible pixels before
+// extracting each building and scaling it to target dimensions.
+function loadAndSliceSpritesheet(src, targetWidth, targetHeight) {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      // Draw full image to a work canvas to read pixel data
+      const full = document.createElement("canvas");
+      full.width = img.width;
+      full.height = img.height;
+      const fctx = full.getContext("2d");
+      fctx.drawImage(img, 0, 0);
+      const fullData = fctx.getImageData(0, 0, img.width, img.height).data;
+
+      const alphaThreshold = 10;
+
+      // Find vertical gaps (columns with no visible content)
+      const colHasContent = new Array(img.width).fill(false);
+      for (let x = 0; x < img.width; x++) {
+        for (let y = 0; y < img.height; y++) {
+          if (fullData[(y * img.width + x) * 4 + 3] > alphaThreshold) {
+            colHasContent[x] = true;
+            break;
+          }
+        }
+      }
+
+      // Find horizontal gaps (rows with no visible content)
+      const rowHasContent = new Array(img.height).fill(false);
+      for (let y = 0; y < img.height; y++) {
+        for (let x = 0; x < img.width; x++) {
+          if (fullData[(y * img.width + x) * 4 + 3] > alphaThreshold) {
+            rowHasContent[y] = true;
+            break;
+          }
+        }
+      }
+
+      // Extract contiguous content regions along each axis
+      function findRegions(hasContent) {
+        const regions = [];
+        let inRegion = false;
+        let start = 0;
+        for (let i = 0; i < hasContent.length; i++) {
+          if (hasContent[i] && !inRegion) {
+            start = i;
+            inRegion = true;
+          } else if (!hasContent[i] && inRegion) {
+            regions.push([start, i - 1]);
+            inRegion = false;
+          }
+        }
+        if (inRegion) regions.push([start, hasContent.length - 1]);
+        return regions;
+      }
+
+      const colRegions = findRegions(colHasContent);
+      const rowRegions = findRegions(rowHasContent);
+
+      const canvases = [];
+      for (let ri = 0; ri < rowRegions.length; ri++) {
+        for (let ci = 0; ci < colRegions.length; ci++) {
+          const [cx0, cx1] = colRegions[ci];
+          const [ry0, ry1] = rowRegions[ri];
+          const cellW = cx1 - cx0 + 1;
+          const cellH = ry1 - ry0 + 1;
+
+          // Find tight content bounds within this cell region
+          let minX = cellW, minY = cellH, maxX = 0, maxY = 0;
+          for (let py = 0; py < cellH; py++) {
+            for (let px = 0; px < cellW; px++) {
+              const idx = ((ry0 + py) * img.width + (cx0 + px)) * 4;
+              if (fullData[idx + 3] > alphaThreshold) {
+                if (px < minX) minX = px;
+                if (px > maxX) maxX = px;
+                if (py < minY) minY = py;
+                if (py > maxY) maxY = py;
+              }
+            }
+          }
+
+          // Create final canvas at target dimensions
+          const canvas = document.createElement("canvas");
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          const ctx = canvas.getContext("2d");
+
+          if (maxX >= minX && maxY >= minY) {
+            const contentW = maxX - minX + 1;
+            const contentH = maxY - minY + 1;
+            const scale = Math.min(targetWidth / contentW, targetHeight / contentH);
+            const scaledW = contentW * scale;
+            const scaledH = contentH * scale;
+            const destX = (targetWidth - scaledW) / 2;
+            const destY = targetHeight - scaledH;
+            ctx.drawImage(
+              img,
+              cx0 + minX, ry0 + minY, contentW, contentH,
+              destX, destY, scaledW, scaledH
+            );
+          }
+
+          canvases.push(canvas);
+        }
+      }
+
+      resolve(canvases);
+    };
+    img.onerror = () => reject(new Error(`Failed to load spritesheet: ${src}`));
+    img.src = src;
+  });
+}
+
+// Load both building spritesheets and return sliced variants.
+export async function loadBuildingSpritesheets() {
+  const [houseVariants, apartmentVariants] = await Promise.all([
+    loadAndSliceSpritesheet(
+      "/textures/buildings/houses.png",
+      buildingTypes.house.spriteWidth,
+      buildingTypes.house.spriteHeight
+    ),
+    loadAndSliceSpritesheet(
+      "/textures/buildings/midsizebuildings.png",
+      buildingTypes.apartment.spriteWidth,
+      buildingTypes.apartment.spriteHeight
+    ),
+  ]);
+  return { house: houseVariants, apartment: apartmentVariants };
+}
+
 // Generate a building sprite based on type. Each type has a distinct shape.
 export function generateBuildingSprite(typeName) {
   const type = buildingTypes[typeName];
@@ -333,12 +465,28 @@ export function generateBuildingSprite(typeName) {
   }
 }
 
-// Generate all placeholder building sprites. Returns a Map<typeName, canvas>.
-export function generateAllBuildingSprites() {
+// Generate all placeholder building sprites (procedural only, synchronous).
+export function generateProceduralBuildingSprites() {
   const sprites = {};
   for (const typeName of Object.keys(buildingTypes)) {
     sprites[typeName] = generateBuildingSprite(typeName);
   }
+  return sprites;
+}
+
+// Generate all building sprites, loading spritesheets for house/apartment.
+// Returns { house: [canvas x9], apartment: [canvas x9], office: canvas, landmark: canvas }
+export async function generateAllBuildingSprites() {
+  const sprites = {};
+  // Procedural sprites for office and landmark
+  sprites.office = generateBuildingSprite("office");
+  sprites.landmark = generateBuildingSprite("landmark");
+
+  // Load spritesheet variants for house and apartment
+  const variants = await loadBuildingSpritesheets();
+  sprites.house = variants.house;
+  sprites.apartment = variants.apartment;
+
   return sprites;
 }
 
@@ -374,7 +522,8 @@ export function canPlaceBuilding(x, y, typeName, elevationMap, roadSet, building
 
 // Place a building into the buildingMap. Returns a new Map with the building added.
 // Does NOT validate — call canPlaceBuilding first.
-export function placeBuildingInMap(x, y, typeName, buildingMap) {
+// variant: index 0-8 for spritesheet-based types (house, apartment), ignored for others.
+export function placeBuildingInMap(x, y, typeName, buildingMap, variant = 0) {
   const type = buildingTypes[typeName];
   const [fw, fh] = type.footprint;
   const newMap = new Map(buildingMap);
@@ -385,6 +534,7 @@ export function placeBuildingInMap(x, y, typeName, buildingMap) {
         type: typeName,
         originX: x,
         originY: y,
+        variant,
       });
     }
   }
@@ -443,7 +593,8 @@ export function autoFillBuildings(elevationMap, roadSet, existingBuildingMap) {
         if (typeName === "apartment" && rand() > 0.5) continue;
 
         if (canPlaceBuilding(x, y, typeName, elevationMap, roadSet, buildingMap)) {
-          buildingMap = placeBuildingInMap(x, y, typeName, buildingMap);
+          const variant = Math.floor(rand() * 9);
+          buildingMap = placeBuildingInMap(x, y, typeName, buildingMap, variant);
         }
       }
     }
@@ -528,10 +679,26 @@ export function autoPlaceBuildings(elevationMap, roadSet) {
     if (rand() < 0.5) continue;
     if (buildingMap.has(candidate)) continue;
 
-    // Place house or apartment (1x1)
+    // Place house or apartment
     const typeName = rand() < 0.4 ? "apartment" : "house";
-    if (canPlaceBuilding(cx, cy, typeName, elevationMap, roadSet, buildingMap)) {
-      buildingMap = placeBuildingInMap(cx, cy, typeName, buildingMap);
+    const variant = Math.floor(rand() * 9);
+    if (typeName === "apartment") {
+      // Apartment is 2x2 — try offsets so the footprint overlaps this tile
+      let placed = false;
+      for (let oy = 0; oy < 2 && !placed; oy++) {
+        for (let ox = 0; ox < 2 && !placed; ox++) {
+          const bx = cx - ox;
+          const by = cy - oy;
+          if (canPlaceBuilding(bx, by, "apartment", elevationMap, roadSet, buildingMap)) {
+            buildingMap = placeBuildingInMap(bx, by, "apartment", buildingMap, variant);
+            placed = true;
+          }
+        }
+      }
+    } else {
+      if (canPlaceBuilding(cx, cy, typeName, elevationMap, roadSet, buildingMap)) {
+        buildingMap = placeBuildingInMap(cx, cy, typeName, buildingMap, variant);
+      }
     }
   }
 

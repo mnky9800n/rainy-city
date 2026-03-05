@@ -3,7 +3,7 @@ import { tileConfig, gridWidth, gridHeight } from './constants.js';
 import { generateCoastline, generateElevationMap, generateRoads, flattenTerrainAtPoints, taperElevation } from './terrain.js';
 import { getTileCornerHeights } from './rendering.js';
 import { findRoadPath, assignRoadTypes } from './pathfinding.js';
-import { buildingTypes, generateAllBuildingSprites, canPlaceBuilding, placeBuildingInMap, removeBuildingFromMap, autoPlaceBuildings, autoFillBuildings } from './buildings.js';
+import { buildingTypes, generateProceduralBuildingSprites, generateAllBuildingSprites, canPlaceBuilding, placeBuildingInMap, removeBuildingFromMap, autoPlaceBuildings, autoFillBuildings } from './buildings.js';
 
 const CityContext = createContext(null);
 
@@ -74,7 +74,16 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
 
   // Building state
   const [buildingMap, setBuildingMap] = useState(() => new Map());
-  const [buildingSprites] = useState(() => generateAllBuildingSprites());
+  const [buildingSprites, setBuildingSprites] = useState(() => generateProceduralBuildingSprites());
+
+  // Load spritesheet-based building sprites asynchronously
+  useEffect(() => {
+    generateAllBuildingSprites().then(sprites => {
+      setBuildingSprites(sprites);
+    }).catch(err => {
+      console.warn("Failed to load building spritesheets, keeping procedural sprites:", err);
+    });
+  }, []);
 
   // Road drawing state
   const [roadStartTile, setRoadStartTile] = useState(null);
@@ -97,7 +106,8 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
 
   const placeBuilding = useCallback((x, y, typeName) => {
     if (!canPlaceBuilding(x, y, typeName, elevationMap, roadSet, buildingMap)) return false;
-    setBuildingMap(placeBuildingInMap(x, y, typeName, buildingMap));
+    const variant = Math.floor(Math.random() * 9);
+    setBuildingMap(placeBuildingInMap(x, y, typeName, buildingMap, variant));
     return true;
   }, [elevationMap, roadSet, buildingMap]);
 

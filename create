@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Example: ./create "a 32x32 pixel art building with a red roof, top-down isometric view"
 set -euo pipefail
 
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)

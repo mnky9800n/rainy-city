@@ -49,7 +49,10 @@ const TerrainLayer = ({ showRoads = true }) => {
         const [fw, fh] = bType.footprint;
         // Only draw at the south corner (max x + max y in footprint)
         if (tile.x === building.originX + fw - 1 && tile.y === building.originY + fh - 1) {
-          const sprite = buildingSprites[building.type];
+          const spriteEntry = buildingSprites[building.type];
+          const sprite = Array.isArray(spriteEntry)
+            ? spriteEntry[building.variant ?? 0]
+            : spriteEntry;
           if (sprite) {
             const yOffset = -tile.elevation * elevationScale * zoom;
             // Bottom-center of sprite aligns to the south point of the footprint diamond
