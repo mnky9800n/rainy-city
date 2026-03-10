@@ -188,7 +188,8 @@ const App = () => {
                   style={{ marginLeft: 8, fontSize: 12, background: '#444', color: '#fff', border: '1px solid #666', borderRadius: 4, padding: '2px 4px' }}
                 >
                   <option value="house">House (1x1)</option>
-                  <option value="apartment">Apartment (1x1)</option>
+                  <option value="apartment">Apartment (2x2)</option>
+                  <option value="mixeduse">Mixed Use (2x2)</option>
                   <option value="office">Office (2x2)</option>
                   <option value="landmark">Landmark (3x3)</option>
                 </select>
