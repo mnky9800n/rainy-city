@@ -18,22 +18,6 @@ export const buildingTypes = {
     spriteHeight: 192,
     color: "#708090",
   },
-  office: {
-    footprint: [2, 2],
-    spriteWidth: 128,
-    spriteHeight: 160,
-    color: "#4682b4",
-  },
-  landmark: {
-    footprint: [3, 3],
-    spriteWidth: 192,
-    spriteHeight: 224,
-    color: "#8b008b",
-    popupContent: {
-      title: "City Hall",
-      description: "The heart of Rainy City.",
-    },
-  },
 };
 
 // Adjust a hex color brightness by a percentage (-100 to +100)
@@ -225,99 +209,6 @@ function generateApartmentSprite(type) {
   return canvas;
 }
 
-// Office: two stacked tiers (wider base, narrower top)
-function generateOfficeSprite(type) {
-  const { spriteWidth, spriteHeight, footprint, color } = type;
-  const [fw, fh] = footprint;
-  const canvas = document.createElement("canvas");
-  canvas.width = spriteWidth;
-  canvas.height = spriteHeight;
-  const ctx = canvas.getContext("2d");
-
-  const baseW = fw * tileWidth;
-  const baseH = fh * tileHeight;
-  const totalHeight = spriteHeight - baseH / 2;
-  const cx = spriteWidth / 2;
-  const bottom = spriteHeight;
-
-  // Lower tier: full footprint, 60% of total height
-  const lowerH = totalHeight * 0.6;
-  drawIsoBox(ctx, cx, bottom, baseW, baseH, lowerH, color);
-
-  // Upper tier: 60% footprint, remaining height, sitting on top
-  const upperBaseW = baseW * 0.6;
-  const upperBaseH = baseH * 0.6;
-  const upperH = totalHeight * 0.4;
-  const upperBottom = bottom - lowerH + upperBaseH / 2;
-  drawIsoBox(ctx, cx, upperBottom, upperBaseW, upperBaseH, upperH, adjustColor(color, 10));
-
-  return canvas;
-}
-
-// Landmark: box with a dome on top
-function generateLandmarkSprite(type) {
-  const { spriteWidth, spriteHeight, footprint, color } = type;
-  const [fw, fh] = footprint;
-  const canvas = document.createElement("canvas");
-  canvas.width = spriteWidth;
-  canvas.height = spriteHeight;
-  const ctx = canvas.getContext("2d");
-
-  const baseW = fw * tileWidth;
-  const baseH = fh * tileHeight;
-  const totalHeight = spriteHeight - baseH / 2;
-  const wallHeight = totalHeight * 0.6;
-  const cx = spriteWidth / 2;
-  const bottom = spriteHeight;
-
-  const { roofSouth, roofEast, roofNorth, roofWest } = drawIsoBox(ctx, cx, bottom, baseW, baseH, wallHeight, color);
-
-  // Dome: an ellipse rising from the roof center
-  const domeHeight = totalHeight - wallHeight;
-  const roofCenterX = cx;
-  const roofCenterY = (roofNorth.y + roofSouth.y) / 2;
-  const domeRadiusX = baseW * 0.3;
-  const domeRadiusY = baseH * 0.3;
-
-  // Dome back half (lighter)
-  ctx.fillStyle = adjustColor(color, 5);
-  ctx.beginPath();
-  ctx.ellipse(roofCenterX, roofCenterY, domeRadiusX, domeRadiusY, 0, Math.PI, 0);
-  ctx.closePath();
-  ctx.fill();
-
-  // Dome front half (darker, gives 3D look)
-  ctx.fillStyle = adjustColor(color, -15);
-  ctx.beginPath();
-  ctx.ellipse(roofCenterX, roofCenterY, domeRadiusX, domeRadiusY, 0, 0, Math.PI);
-  ctx.closePath();
-  ctx.fill();
-
-  // Dome vertical rise (the dome extends upward)
-  const domeTop = roofCenterY - domeHeight;
-  ctx.fillStyle = adjustColor(color, 0);
-  ctx.beginPath();
-  ctx.ellipse(roofCenterX, domeTop + domeHeight * 0.5, domeRadiusX, domeHeight * 0.5, 0, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.fill();
-
-  // Dome highlight
-  ctx.fillStyle = adjustColor(color, 25);
-  ctx.beginPath();
-  ctx.ellipse(roofCenterX - domeRadiusX * 0.2, domeTop + domeHeight * 0.35, domeRadiusX * 0.4, domeHeight * 0.25, -0.3, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.fill();
-
-  // Dome outline
-  ctx.strokeStyle = "rgba(0,0,0,0.3)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.ellipse(roofCenterX, domeTop + domeHeight * 0.5, domeRadiusX, domeHeight * 0.5, 0, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.stroke();
-
-  return canvas;
-}
 
 // Load a spritesheet image and slice it into 9 cells (3x3 grid).
 // Detects gaps between buildings to find actual cell boundaries rather than
@@ -459,8 +350,6 @@ export function generateBuildingSprite(typeName) {
   switch (typeName) {
     case "house": return generateHouseSprite(type);
     case "apartment": return generateApartmentSprite(type);
-    case "office": return generateOfficeSprite(type);
-    case "landmark": return generateLandmarkSprite(type);
     default: return generateHouseSprite(type);
   }
 }
@@ -477,17 +366,9 @@ export function generateProceduralBuildingSprites() {
 // Generate all building sprites, loading spritesheets for house/apartment.
 // Returns { house: [canvas x9], apartment: [canvas x9], office: canvas, landmark: canvas }
 export async function generateAllBuildingSprites() {
-  const sprites = {};
-  // Procedural sprites for office and landmark
-  sprites.office = generateBuildingSprite("office");
-  sprites.landmark = generateBuildingSprite("landmark");
-
   // Load spritesheet variants for house and apartment
   const variants = await loadBuildingSpritesheets();
-  sprites.house = variants.house;
-  sprites.apartment = variants.apartment;
-
-  return sprites;
+  return { house: variants.house, apartment: variants.apartment };
 }
 
 // Check if a building can be placed at (x, y) with the given footprint.
@@ -573,7 +454,7 @@ export function autoFillBuildings(elevationMap, roadSet, existingBuildingMap) {
   };
 
   // Try building types from largest to smallest
-  const typePriority = ["landmark", "office", "apartment", "house"];
+  const typePriority = ["apartment", "house"];
 
   // Scan the entire grid for open land tiles, try to place buildings
   for (const typeName of typePriority) {
@@ -585,10 +466,6 @@ export function autoFillBuildings(elevationMap, roadSet, existingBuildingMap) {
         // Skip if any tile in footprint is already occupied
         if (buildingMap.has(`${x},${y}`)) continue;
 
-        // For landmarks, only place occasionally to keep variety
-        if (typeName === "landmark" && rand() > 0.03) continue;
-        // For offices, moderate density
-        if (typeName === "office" && rand() > 0.15) continue;
         // For apartments vs houses, randomize the mix
         if (typeName === "apartment" && rand() > 0.5) continue;
 
@@ -637,43 +514,9 @@ export function autoPlaceBuildings(elevationMap, roadSet) {
     [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
   }
 
-  // Try placing larger buildings first, then fill with small ones
-  // Attempt a few landmarks and offices
+  // Place buildings near roads
   for (const candidate of candidates) {
     const [cx, cy] = candidate.split(",").map(Number);
-
-    // Try landmark (3x3) with low probability
-    if (rand() < 0.02) {
-      // Try placing with origin at various offsets so the building overlaps this tile
-      for (let oy = 0; oy < 3; oy++) {
-        for (let ox = 0; ox < 3; ox++) {
-          const bx = cx - ox;
-          const by = cy - oy;
-          if (canPlaceBuilding(bx, by, "landmark", elevationMap, roadSet, buildingMap)) {
-            buildingMap = placeBuildingInMap(bx, by, "landmark", buildingMap);
-            break;
-          }
-        }
-        if (buildingMap.has(candidate)) break;
-      }
-      if (buildingMap.has(candidate)) continue;
-    }
-
-    // Try office (2x2) with moderate probability
-    if (rand() < 0.08) {
-      for (let oy = 0; oy < 2; oy++) {
-        for (let ox = 0; ox < 2; ox++) {
-          const bx = cx - ox;
-          const by = cy - oy;
-          if (canPlaceBuilding(bx, by, "office", elevationMap, roadSet, buildingMap)) {
-            buildingMap = placeBuildingInMap(bx, by, "office", buildingMap);
-            break;
-          }
-        }
-        if (buildingMap.has(candidate)) break;
-      }
-      if (buildingMap.has(candidate)) continue;
-    }
 
     // Skip some tiles for spacing
     if (rand() < 0.5) continue;

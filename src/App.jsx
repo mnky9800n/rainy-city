@@ -190,8 +190,6 @@ const App = () => {
                   <option value="house">House (1x1)</option>
                   <option value="apartment">Apartment (2x2)</option>
                   <option value="mixeduse">Mixed Use (2x2)</option>
-                  <option value="office">Office (2x2)</option>
-                  <option value="landmark">Landmark (3x3)</option>
                 </select>
               )}<br />
               <label><input type="checkbox" checked={destructionMode} onChange={() => { setDestructionMode(!destructionMode); if (!destructionMode) { setDrawRoadsMode(false); setPlaceBuildingsMode(false); } }} /> Destruction</label>
