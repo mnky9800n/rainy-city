@@ -12,6 +12,12 @@ export const buildingTypes = {
     spriteHeight: 80,
     color: "#a0522d",
   },
+  shop: {
+    footprint: [1, 1],
+    spriteWidth: 64,
+    spriteHeight: 80,
+    color: "#cd853f",
+  },
   apartment: {
     footprint: [2, 2],
     spriteWidth: 128,
@@ -325,13 +331,18 @@ function loadAndSliceSpritesheet(src, targetWidth, targetHeight) {
   });
 }
 
-// Load both building spritesheets and return sliced variants.
+// Load building spritesheets and return sliced variants.
 export async function loadBuildingSpritesheets() {
-  const [houseVariants, apartmentVariants] = await Promise.all([
+  const [houseVariants, shopVariants, apartmentVariants] = await Promise.all([
     loadAndSliceSpritesheet(
       "/textures/buildings/houses.png",
       buildingTypes.house.spriteWidth,
       buildingTypes.house.spriteHeight
+    ),
+    loadAndSliceSpritesheet(
+      "/textures/buildings/shops.png",
+      buildingTypes.shop.spriteWidth,
+      buildingTypes.shop.spriteHeight
     ),
     loadAndSliceSpritesheet(
       "/textures/buildings/midsizebuildings.png",
@@ -339,7 +350,7 @@ export async function loadBuildingSpritesheets() {
       buildingTypes.apartment.spriteHeight
     ),
   ]);
-  return { house: houseVariants, apartment: apartmentVariants };
+  return { house: houseVariants, shop: shopVariants, apartment: apartmentVariants };
 }
 
 // Generate a building sprite based on type. Each type has a distinct shape.
@@ -363,12 +374,10 @@ export function generateProceduralBuildingSprites() {
   return sprites;
 }
 
-// Generate all building sprites, loading spritesheets for house/apartment.
-// Returns { house: [canvas x9], apartment: [canvas x9], office: canvas, landmark: canvas }
+// Generate all building sprites, loading spritesheets.
 export async function generateAllBuildingSprites() {
-  // Load spritesheet variants for house and apartment
   const variants = await loadBuildingSpritesheets();
-  return { house: variants.house, apartment: variants.apartment };
+  return { house: variants.house, shop: variants.shop, apartment: variants.apartment };
 }
 
 // Check if a building can be placed at (x, y) with the given footprint.
@@ -454,7 +463,7 @@ export function autoFillBuildings(elevationMap, roadSet, existingBuildingMap) {
   };
 
   // Try building types from largest to smallest
-  const typePriority = ["apartment", "house"];
+  const typePriority = ["apartment", "shop", "house"];
 
   // Scan the entire grid for open land tiles, try to place buildings
   for (const typeName of typePriority) {
@@ -466,8 +475,9 @@ export function autoFillBuildings(elevationMap, roadSet, existingBuildingMap) {
         // Skip if any tile in footprint is already occupied
         if (buildingMap.has(`${x},${y}`)) continue;
 
-        // For apartments vs houses, randomize the mix
+        // Randomize the mix of building types
         if (typeName === "apartment" && rand() > 0.5) continue;
+        if (typeName === "shop" && rand() > 0.3) continue;
 
         if (canPlaceBuilding(x, y, typeName, elevationMap, roadSet, buildingMap)) {
           const variant = Math.floor(rand() * 9);
@@ -522,8 +532,9 @@ export function autoPlaceBuildings(elevationMap, roadSet) {
     if (rand() < 0.5) continue;
     if (buildingMap.has(candidate)) continue;
 
-    // Place house or apartment
-    const typeName = rand() < 0.4 ? "apartment" : "house";
+    // Place house, shop, or apartment
+    const roll = rand();
+    const typeName = roll < 0.3 ? "apartment" : roll < 0.55 ? "shop" : "house";
     const variant = Math.floor(rand() * 9);
     if (typeName === "apartment") {
       // Apartment is 2x2 — try offsets so the footprint overlaps this tile
@@ -539,6 +550,7 @@ export function autoPlaceBuildings(elevationMap, roadSet) {
         }
       }
     } else {
+      // shop and house are both 1x1
       if (canPlaceBuilding(cx, cy, typeName, elevationMap, roadSet, buildingMap)) {
         buildingMap = placeBuildingInMap(cx, cy, typeName, buildingMap, variant);
       }
