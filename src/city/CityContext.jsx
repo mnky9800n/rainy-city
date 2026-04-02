@@ -3,7 +3,7 @@ import { tileConfig, gridWidth, gridHeight } from './constants.js';
 import { generateCoastline, generateElevationMap, generateRoads, flattenTerrainAtPoints, taperElevation } from './terrain.js';
 import { getTileCornerHeights } from './rendering.js';
 import { findRoadPath, assignRoadTypes } from './pathfinding.js';
-import { buildingTypes, generateProceduralBuildingSprites, generateAllBuildingSprites, canPlaceBuilding, placeBuildingInMap, removeBuildingFromMap, autoFillBuildings } from './buildings.js';
+import { buildingTypes, generateProceduralBuildingSprites, generateAllBuildingSprites, canPlaceBuilding, placeBuildingInMap, removeBuildingFromMap, autoFillBuildings, applyRainyFilter } from './buildings.js';
 
 const CityContext = createContext(null);
 
@@ -63,6 +63,17 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
           });
         }
       }));
+
+      // Apply rainy filter to all tile textures
+      for (const [key, img] of Object.entries(loadedTextures)) {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const cctx = c.getContext('2d');
+        cctx.drawImage(img, 0, 0);
+        applyRainyFilter(c);
+        loadedTextures[key] = c;
+      }
 
       setTextures(loadedTextures);
     };

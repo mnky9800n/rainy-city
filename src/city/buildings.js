@@ -343,6 +343,37 @@ function loadAndSliceSpritesheet(src, targetWidth, targetHeight) {
   });
 }
 
+// Apply a rainy/overcast color filter to a sprite canvas.
+// Desaturates, darkens slightly, and shifts toward cool blue-grey.
+export function applyRainyFilter(canvas) {
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = imageData.data;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] === 0) continue; // skip transparent
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    // Desaturate ~40%: blend toward luminance
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    const desat = 0.4;
+    let nr = r + (lum - r) * desat;
+    let ng = g + (lum - g) * desat;
+    let nb = b + (lum - b) * desat;
+    // Shift toward cool blue-grey
+    nr = nr * 0.88;
+    ng = ng * 0.91;
+    nb = nb * 0.98 + 8;
+    // Darken slightly
+    nr *= 0.85;
+    ng *= 0.85;
+    nb *= 0.88;
+    d[i]     = Math.min(255, Math.max(0, nr));
+    d[i + 1] = Math.min(255, Math.max(0, ng));
+    d[i + 2] = Math.min(255, Math.max(0, nb));
+  }
+  ctx.putImageData(imageData, 0, 0);
+  return canvas;
+}
+
 // Load building spritesheets and return sliced variants.
 export async function loadBuildingSpritesheets() {
   const [houseVariants, shopVariants, commercialVariants, apartmentVariants, skyscraperVariants] = await Promise.all([
@@ -372,7 +403,16 @@ export async function loadBuildingSpritesheets() {
       buildingTypes.skyscraper.spriteHeight
     ),
   ]);
-  return { house: houseVariants, shop: shopVariants, commercial: commercialVariants, apartment: apartmentVariants, skyscraper: skyscraperVariants };
+  // Apply rainy filter to all sprites
+  const filtered = { house: houseVariants, shop: shopVariants, commercial: commercialVariants, apartment: apartmentVariants, skyscraper: skyscraperVariants };
+  for (const variants of Object.values(filtered)) {
+    if (Array.isArray(variants)) {
+      variants.forEach(applyRainyFilter);
+    } else if (variants) {
+      applyRainyFilter(variants);
+    }
+  }
+  return filtered;
 }
 
 // Generate a building sprite based on type. Each type has a distinct shape.

@@ -94,7 +94,10 @@ export function drawTile(ctx, x, y, elevation, type, corners, zoom, textures) {
   const textureImage = textures[type];
   const isSloped = corners.n + corners.e + corners.s + corners.w > 0;
 
-  if (textureImage?.complete && textureImage.naturalWidth > 0) {
+  const hasTexture = textureImage instanceof HTMLCanvasElement
+    ? textureImage.width > 0
+    : textureImage?.complete && textureImage.naturalWidth > 0;
+  if (hasTexture) {
     ctx.save();
     ctx.clip();
 
@@ -105,8 +108,8 @@ export function drawTile(ctx, x, y, elevation, type, corners, zoom, textures) {
       // On a flat tile, texture midpoints map to diamond corners:
       //   tex(W/2, 0) -> N,  tex(W, H/2) -> E,  tex(0, H/2) -> W,  tex(W/2, H) -> S
       // For road tiles (parallelograms), an affine transform can match all 4 exactly.
-      const imgW = textureImage.naturalWidth;
-      const imgH = textureImage.naturalHeight;
+      const imgW = textureImage.naturalWidth || textureImage.width;
+      const imgH = textureImage.naturalHeight || textureImage.height;
       const tw_s = tileWidth * zoom;
       const th_s = tileHeight * zoom;
       const hw = tw_s / 2;
