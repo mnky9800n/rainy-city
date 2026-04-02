@@ -19,9 +19,13 @@ const ZoomContainer = ({ children, onClick }) => {
   const isDragging = useRef(false);
   const didDrag = useRef(false);
   const lastMouse = useRef({ x: 0, y: 0 });
+  // Pinch-to-zoom state
+  const lastPinchDist = useRef(null);
 
   useEffect(() => {
     const el = containerRef.current;
+
+    // Mouse wheel zoom
     const handleWheel = (e) => {
       if (e.ctrlKey) return;
       e.preventDefault();
@@ -34,9 +38,77 @@ const ZoomContainer = ({ children, onClick }) => {
         }
       });
     };
+
+    // Touch handlers
+    const handleTouchStart = (e) => {
+      if (e.touches.length === 2) {
+        // Pinch start
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        lastPinchDist.current = Math.sqrt(dx * dx + dy * dy);
+        isDragging.current = false;
+      } else if (e.touches.length === 1) {
+        // Single finger pan
+        isDragging.current = true;
+        didDrag.current = false;
+        lastMouse.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      e.preventDefault();
+      if (e.touches.length === 2 && lastPinchDist.current != null) {
+        // Pinch zoom
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const delta = dist - lastPinchDist.current;
+        lastPinchDist.current = dist;
+        setZoom((z) => Math.min(3, Math.max(0.5, z + delta * 0.005)));
+        // Also pan to midpoint
+        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        if (isDragging.current) {
+          const ddx = midX - lastMouse.current.x;
+          const ddy = midY - lastMouse.current.y;
+          setPanX((px) => px + ddx);
+          setPanY((py) => py + ddy);
+        }
+        lastMouse.current = { x: midX, y: midY };
+        isDragging.current = true;
+      } else if (e.touches.length === 1 && isDragging.current) {
+        // Single finger pan
+        const ddx = e.touches[0].clientX - lastMouse.current.x;
+        const ddy = e.touches[0].clientY - lastMouse.current.y;
+        if (Math.abs(ddx) > 2 || Math.abs(ddy) > 2) didDrag.current = true;
+        lastMouse.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        setPanX((px) => px + ddx);
+        setPanY((py) => py + ddy);
+      }
+    };
+
+    const handleTouchEnd = (e) => {
+      if (e.touches.length === 0) {
+        isDragging.current = false;
+        lastPinchDist.current = null;
+      } else if (e.touches.length === 1) {
+        // Went from pinch to single finger — reset
+        lastPinchDist.current = null;
+        lastMouse.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    };
+
     el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
-  }, [setZoom]);
+    el.addEventListener("touchstart", handleTouchStart, { passive: false });
+    el.addEventListener("touchmove", handleTouchMove, { passive: false });
+    el.addEventListener("touchend", handleTouchEnd);
+    return () => {
+      el.removeEventListener("wheel", handleWheel);
+      el.removeEventListener("touchstart", handleTouchStart);
+      el.removeEventListener("touchmove", handleTouchMove);
+      el.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [setZoom, setPanX, setPanY]);
 
   const handleMouseDown = (e) => {
     isDragging.current = true;
@@ -82,6 +154,7 @@ const ZoomContainer = ({ children, onClick }) => {
         background: "#222",
         zIndex: 1,
         cursor: "grab",
+        touchAction: "none",
       }}
     >
       {children}
