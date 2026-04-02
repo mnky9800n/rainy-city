@@ -196,15 +196,9 @@ const App = () => {
               <div style={{ marginTop: 4, marginLeft: 20, display: 'flex', gap: 4 }}>
                 <button
                   onClick={() => resetRoadsRef.current?.drawRoadGrid()}
-                  style={{ padding: '2px 8px', fontSize: 12, background: '#555', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  Draw Road Grid
-                </button>
-                <button
-                  onClick={() => resetRoadsRef.current?.fillBuildings()}
                   style={{ padding: '2px 8px', fontSize: 12, background: '#556b2f', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                 >
-                  Add Buildings
+                  Build City
                 </button>
                 <button
                   onClick={() => resetRoadsRef.current?.resetRoads()}

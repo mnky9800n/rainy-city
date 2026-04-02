@@ -3,7 +3,7 @@ import { tileConfig, gridWidth, gridHeight } from './constants.js';
 import { generateCoastline, generateElevationMap, generateRoads, flattenTerrainAtPoints, taperElevation } from './terrain.js';
 import { getTileCornerHeights } from './rendering.js';
 import { findRoadPath, assignRoadTypes } from './pathfinding.js';
-import { buildingTypes, generateProceduralBuildingSprites, generateAllBuildingSprites, canPlaceBuilding, placeBuildingInMap, removeBuildingFromMap, autoPlaceBuildings, autoFillBuildings } from './buildings.js';
+import { buildingTypes, generateProceduralBuildingSprites, generateAllBuildingSprites, canPlaceBuilding, placeBuildingInMap, removeBuildingFromMap, autoFillBuildings } from './buildings.js';
 
 const CityContext = createContext(null);
 
@@ -126,17 +126,13 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
   const drawRoadGrid = useCallback(() => {
     const newElevation = baseElevation.map(row => [...row]);
     const roads = generateRoads(gridWidth, gridHeight, newElevation);
+    const newBuildings = autoFillBuildings(newElevation, roads, new Map());
     setElevationMap(newElevation);
     setRoadSet(roads);
-    setBuildingMap(new Map());
+    setBuildingMap(newBuildings);
     setRoadStartTile(null);
     setRoadPreviewPath(null);
   }, [baseElevation]);
-
-  const fillBuildings = useCallback(() => {
-    const newBuildings = autoFillBuildings(elevationMap, roadSet, buildingMap);
-    setBuildingMap(newBuildings);
-  }, [elevationMap, roadSet, buildingMap]);
 
   const destroyTile = useCallback((x, y) => {
     const newElevation = elevationMap.map(row => [...row]);
@@ -177,7 +173,7 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
   // Expose callbacks to parent via ref
   useEffect(() => {
     if (resetRoadsRef) {
-      resetRoadsRef.current = { resetRoads, drawRoadGrid, fillBuildings };
+      resetRoadsRef.current = { resetRoads, drawRoadGrid };
     }
   }, [resetRoadsRef, resetRoads, drawRoadGrid]);
 
