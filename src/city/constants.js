@@ -5,7 +5,7 @@ export const tileConfig = {
     // No texture for water - always use color
   },
   grass: {
-    color: "#27ae60",
+    color: "#3a6b47",
     texture: "./textures/grass.png"
   },
   building: {
