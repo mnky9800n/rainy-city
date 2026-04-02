@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from "react";
+import React, { createContext, useContext, useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { tileConfig, gridWidth, gridHeight } from './constants.js';
 import { generateCoastline, generateElevationMap, generateRoads, flattenTerrainAtPoints, taperElevation } from './terrain.js';
 import { getTileCornerHeights } from './rendering.js';
@@ -21,6 +21,10 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
   const [zoom, setZoom] = useState(1);
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
+
+  // Shared mutable view ref for rAF loops to read without triggering re-renders
+  const viewRef = useRef({ panX: 0, panY: 0, zoom: 1 });
+  useEffect(() => { viewRef.current = { panX, panY, zoom }; }, [panX, panY, zoom]);
   const [textures, setTextures] = useState({});
   const [hoveredTile, setHoveredTile] = useState(null);
 
@@ -233,6 +237,7 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     setPanX,
     panY,
     setPanY,
+    viewRef,
     textures,
     coastline,
     elevationMap,

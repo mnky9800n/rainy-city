@@ -4,6 +4,7 @@ import SeafloorLayer from './layers/SeafloorLayer.jsx';
 import WaterSurfaceLayer from './layers/WaterSurfaceLayer.jsx';
 import TerrainLayer from './layers/TerrainLayer.jsx';
 import WhaleLayer from './layers/WhaleLayer.jsx';
+import CloudLayer from './layers/CloudLayer.jsx';
 import DebugLayer from './layers/DebugLayer.jsx';
 import InfoPopup from './InfoPopup.jsx';
 import { buildingTypes } from './buildings.js';
@@ -139,6 +140,7 @@ const CityInner = ({ showSeafloor, showWaterSurface, showTerrain, showRoads, sho
         {showWaterSurface && <WaterSurfaceLayer />}
         <WhaleLayer onWhaleClick={handleWhaleClick} />
         {showTerrain && <TerrainLayer showRoads={showRoads} />}
+        <CloudLayer />
         {showDebugLayer && <DebugLayer onBuildingClick={handleBuildingClick} />}
       </ZoomContainer>
       {infoPopup && (
