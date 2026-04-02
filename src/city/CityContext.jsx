@@ -18,7 +18,7 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     width: window.innerWidth,
     height: window.innerHeight,
   });
-  const [zoom, setZoom] = useState(0.7);
+  const [zoom, setZoom] = useState(0.5);
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
 
