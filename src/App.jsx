@@ -8,36 +8,43 @@ const DraggableWindow = ({ children, initialPosition = { x: 100, y: 100 } }) => 
   const [dragging, setDragging] = useState(false);
   const [rel, setRel] = useState({ x: 0, y: 0 });
 
-  const onMouseDown = (e) => {
+  const onStart = (clientX, clientY) => {
     setDragging(true);
-    setRel({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
-    });
-    e.preventDefault();
+    setRel({ x: clientX - position.x, y: clientY - position.y });
   };
+
+  const onMouseDown = (e) => { onStart(e.clientX, e.clientY); e.preventDefault(); };
+  const onTouchStart = (e) => { onStart(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); };
 
   const onMouseUp = () => setDragging(false);
 
   const onMouseMove = (e) => {
     if (!dragging) return;
-    setPosition({
-      x: e.clientX - rel.x,
-      y: e.clientY - rel.y,
-    });
+    setPosition({ x: e.clientX - rel.x, y: e.clientY - rel.y });
+  };
+
+  const onTouchMove = (e) => {
+    if (!dragging) return;
+    setPosition({ x: e.touches[0].clientX - rel.x, y: e.touches[0].clientY - rel.y });
   };
 
   React.useEffect(() => {
     if (dragging) {
       window.addEventListener("mousemove", onMouseMove);
       window.addEventListener("mouseup", onMouseUp);
+      window.addEventListener("touchmove", onTouchMove, { passive: false });
+      window.addEventListener("touchend", onMouseUp);
     } else {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onMouseUp);
     }
     return () => {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onMouseUp);
     };
   });
 
@@ -66,6 +73,7 @@ const DraggableWindow = ({ children, initialPosition = { x: 100, y: 100 } }) => 
           fontWeight: "bold",
         }}
         onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
       >
         Rainy City
       </div>
