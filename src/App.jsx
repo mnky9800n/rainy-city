@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import RainCanvas from "./RainCanvas";
 import CityRenderer from "./city/CityRenderer";
 
@@ -77,6 +77,7 @@ const DraggableWindow = ({ children, initialPosition = { x: 100, y: 100 } }) => 
 const App = () => {
   const rainRef = useRef(null);
   const cityRef = useRef(null);
+  const thunderRef = useRef(null);
   const [debugMode, setDebugMode] = useState(false);
   const [showDebugTools, setShowDebugTools] = useState(false);
   const [showSeafloor, setShowSeafloor] = useState(true);
@@ -101,6 +102,17 @@ const App = () => {
     cityRef.current.pause();
   };
 
+  const handleLoaded = useCallback(() => {
+    // Autoplay rain and city sounds
+    rainRef.current.volume = 0.7;
+    cityRef.current.volume = 0.5;
+    rainRef.current.play().catch(() => {});
+    cityRef.current.play().catch(() => {});
+    // Thunder crack on fade-in
+    thunderRef.current.volume = 0.8;
+    thunderRef.current.play().catch(() => {});
+  }, []);
+
   return (
     <div className="relative w-full h-full bg-gray-900 min-h-screen">
       <CityRenderer
@@ -115,11 +127,13 @@ const App = () => {
         placeBuildingsMode={placeBuildingsMode}
         selectedBuildingType={selectedBuildingType}
         resetRoadsRef={resetRoadsRef}
+        onLoaded={handleLoaded}
       />
       {showRain && <RainCanvas />}
 
       <audio ref={rainRef} src="./rain.mp3" loop />
       <audio ref={cityRef} src="./city.mp3" loop />
+      <audio ref={thunderRef} src="./thunder.mp3" />
 
       <DraggableWindow>
         <div className="mb-2 flex gap-2">

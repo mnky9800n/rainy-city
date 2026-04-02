@@ -124,8 +124,12 @@ const FadeOverlay = ({ loaded }) => {
   );
 };
 
-const CityInner = ({ showSeafloor, showWaterSurface, showTerrain, showRoads, showDebugLayer, infoPopup, setInfoPopup }) => {
+const CityInner = ({ showSeafloor, showWaterSurface, showTerrain, showRoads, showDebugLayer, infoPopup, setInfoPopup, onLoaded }) => {
   const { dimensions, zoom, panX, panY, buildingMap, drawRoadsMode, destructionMode, loaded } = useCityContext();
+
+  useEffect(() => {
+    if (loaded && onLoaded) onLoaded();
+  }, [loaded, onLoaded]);
 
   const handleWhaleClick = useCallback((screenX, screenY) => {
     setInfoPopup({
@@ -204,6 +208,7 @@ const CityRenderer = ({
   placeBuildingsMode = false,
   selectedBuildingType = "house",
   resetRoadsRef = null,
+  onLoaded = null,
 }) => {
   const [infoPopup, setInfoPopup] = useState(null);
 
@@ -217,6 +222,7 @@ const CityRenderer = ({
         showDebugLayer={showDebugLayer}
         infoPopup={infoPopup}
         setInfoPopup={setInfoPopup}
+        onLoaded={onLoaded}
       />
     </CityProvider>
   );
