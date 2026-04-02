@@ -1,9 +1,10 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { CityProvider, useCityContext } from './CityContext.jsx';
 import SeafloorLayer from './layers/SeafloorLayer.jsx';
 import WaterSurfaceLayer from './layers/WaterSurfaceLayer.jsx';
 import TerrainLayer from './layers/TerrainLayer.jsx';
 import WhaleLayer from './layers/WhaleLayer.jsx';
+import CarLayer from './layers/CarLayer.jsx';
 import CloudLayer from './layers/CloudLayer.jsx';
 import BeaconLayer from './layers/BeaconLayer.jsx';
 import DebugLayer from './layers/DebugLayer.jsx';
@@ -89,8 +90,42 @@ const ZoomContainer = ({ children, onClick }) => {
 };
 
 // Inner component that has access to CityContext for building click detection
+const FadeOverlay = ({ loaded }) => {
+  const [opacity, setOpacity] = useState(1);
+
+  useEffect(() => {
+    if (loaded) {
+      // Small delay so the first frame renders behind the overlay before fading
+      const timeout = setTimeout(() => setOpacity(0), 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [loaded]);
+
+  if (opacity === 0 && loaded) {
+    // Keep mounted during transition, remove after fade completes
+    return (
+      <div
+        style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          background: '#000', zIndex: 99999, pointerEvents: 'none',
+          opacity: 0, transition: 'opacity 1.5s ease-in-out',
+        }}
+        onTransitionEnd={(e) => { e.target.style.display = 'none'; }}
+      />
+    );
+  }
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+      background: '#000', zIndex: 99999, pointerEvents: loaded ? 'none' : 'all',
+      opacity, transition: 'opacity 1.5s ease-in-out',
+    }} />
+  );
+};
+
 const CityInner = ({ showSeafloor, showWaterSurface, showTerrain, showRoads, showDebugLayer, infoPopup, setInfoPopup }) => {
-  const { dimensions, zoom, panX, panY, buildingMap, drawRoadsMode, destructionMode } = useCityContext();
+  const { dimensions, zoom, panX, panY, buildingMap, drawRoadsMode, destructionMode, loaded } = useCityContext();
 
   const handleWhaleClick = useCallback((screenX, screenY) => {
     setInfoPopup({
@@ -136,11 +171,13 @@ const CityInner = ({ showSeafloor, showWaterSurface, showTerrain, showRoads, sho
 
   return (
     <>
+      <FadeOverlay loaded={loaded} />
       <ZoomContainer onClick={handleContainerClick}>
         {showSeafloor && <SeafloorLayer />}
         {showWaterSurface && <WaterSurfaceLayer />}
         <WhaleLayer onWhaleClick={handleWhaleClick} />
         {showTerrain && <TerrainLayer showRoads={showRoads} />}
+        <CarLayer />
         <CloudLayer />
         <BeaconLayer />
         {showDebugLayer && <DebugLayer onBuildingClick={handleBuildingClick} />}

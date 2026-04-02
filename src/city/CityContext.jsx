@@ -18,7 +18,7 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     width: window.innerWidth,
     height: window.innerHeight,
   });
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(0.7);
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
 
@@ -81,22 +81,32 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     loadTextures();
   }, []);
 
-  // Generate coastline and elevation map (no roads initially)
+  // Generate coastline, elevation, roads, and buildings on first load
   const [coastline] = useState(() => generateCoastline(gridWidth));
   const [baseElevation] = useState(() => generateElevationMap(gridWidth, gridHeight, coastline, 42));
-  const [elevationMap, setElevationMap] = useState(baseElevation);
-  const [roadSet, setRoadSet] = useState(() => new Map());
+  const [{ initialElevation, initialRoads, initialBuildings }] = useState(() => {
+    const elev = baseElevation.map(row => [...row]);
+    const roads = generateRoads(gridWidth, gridHeight, elev);
+    const buildings = autoFillBuildings(elev, roads, new Map());
+    return { initialElevation: elev, initialRoads: roads, initialBuildings: buildings };
+  });
+  const [elevationMap, setElevationMap] = useState(initialElevation);
+  const [roadSet, setRoadSet] = useState(() => initialRoads);
 
   // Building state
-  const [buildingMap, setBuildingMap] = useState(() => new Map());
+  const [buildingMap, setBuildingMap] = useState(() => initialBuildings);
   const [buildingSprites, setBuildingSprites] = useState(() => generateProceduralBuildingSprites());
+
+  const [loaded, setLoaded] = useState(false);
 
   // Load spritesheet-based building sprites asynchronously
   useEffect(() => {
     generateAllBuildingSprites().then(sprites => {
       setBuildingSprites(sprites);
+      setLoaded(true);
     }).catch(err => {
       console.warn("Failed to load building spritesheets, keeping procedural sprites:", err);
+      setLoaded(true);
     });
   }, []);
 
@@ -275,6 +285,7 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     removeBuilding,
     placeBuildingsMode,
     selectedBuildingType,
+    loaded,
   };
 
   return <CityContext.Provider value={value}>{children}</CityContext.Provider>;

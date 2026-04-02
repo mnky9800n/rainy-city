@@ -42,28 +42,7 @@ const TerrainLayer = ({ showRoads = true }) => {
         ? 'grass' : tile.type;
       drawTile(ctx, screenX, screenY, tile.elevation, renderType, tile.corners, zoom, textures);
 
-      // Draw building sprite at the south corner tile of the footprint
-      const building = buildingMap.get(`${tile.x},${tile.y}`);
-      if (building) {
-        const bType = buildingTypes[building.type];
-        const [fw, fh] = bType.footprint;
-        // Only draw at the south corner (max x + max y in footprint)
-        if (tile.x === building.originX + fw - 1 && tile.y === building.originY + fh - 1) {
-          const spriteEntry = buildingSprites[building.type];
-          const sprite = Array.isArray(spriteEntry)
-            ? spriteEntry[building.variant ?? 0]
-            : spriteEntry;
-          if (sprite) {
-            const yOffset = -tile.elevation * elevationScale * zoom;
-            // Bottom-center of sprite aligns to the south point of the footprint diamond
-            const spriteW = bType.spriteWidth * zoom;
-            const spriteH = bType.spriteHeight * zoom;
-            const drawX = screenX - spriteW / 2;
-            const drawY = screenY + yOffset - spriteH + (tileHeight * zoom);
-            ctx.drawImage(sprite, drawX, drawY, spriteW, spriteH);
-          }
-        }
-      }
+      // Buildings are drawn by CarLayer for proper depth sorting with cars
     }
   }, [dimensions, zoom, panX, panY, textures, tiles, elevationMap, showWaterSurface, showRoads, buildingMap, buildingSprites]);
 
