@@ -44,37 +44,7 @@ export function generateElevationMap(width, height, coastline, seed = 42) {
         const depth = Math.min(Math.floor(distanceFromCoast / 5), 5);
         elevationMap[y][x] = -depth;
       } else {
-        const distFromCoast = coastY - y;
-        let baseLevel = 1;
-
-        if (distFromCoast > 15) baseLevel = 2;
-        if (distFromCoast > 30) baseLevel = 3;
-        if (distFromCoast > 45) baseLevel = 4;
-
-        elevationMap[y][x] = baseLevel;
-      }
-    }
-  }
-
-  // Add smooth hills
-  const hills = [
-    { x: width * 0.3, y: height * 0.2, radius: 12, height: 2 },
-    { x: width * 0.7, y: height * 0.3, radius: 15, height: 3 },
-    { x: width * 0.5, y: height * 0.15, radius: 10, height: 2 }
-  ];
-
-  for (const hill of hills) {
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        if (elevationMap[y][x] > 0) {
-          const dist = Math.sqrt(Math.pow(x - hill.x, 2) + Math.pow(y - hill.y, 2));
-          if (dist < hill.radius) {
-            const ringLevel = Math.floor((hill.radius - dist) / (hill.radius / hill.height));
-            if (ringLevel > 0) {
-              elevationMap[y][x] = Math.min(elevationMap[y][x] + ringLevel, 8);
-            }
-          }
-        }
+        elevationMap[y][x] = 1;
       }
     }
   }
