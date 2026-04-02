@@ -3,6 +3,7 @@ import { tileConfig, gridWidth, gridHeight } from './constants.js';
 import { generateCoastline, generateElevationMap, generateRoads, flattenTerrainAtPoints, taperElevation } from './terrain.js';
 import { getTileCornerHeights } from './rendering.js';
 import { findRoadPath, assignRoadTypes } from './pathfinding.js';
+import { buildingTypes, generateProceduralBuildingSprites, generateAllBuildingSprites, canPlaceBuilding, placeBuildingInMap, removeBuildingFromMap, autoFillBuildings } from './buildings.js';
 
 const CityContext = createContext(null);
 
@@ -12,7 +13,7 @@ export function useCityContext() {
   return ctx;
 }
 
-export function CityProvider({ debugMode = false, showWaterSurface = true, drawRoadsMode = false, destructionMode = false, resetRoadsRef = null, children }) {
+export function CityProvider({ debugMode = false, showWaterSurface = true, drawRoadsMode = false, destructionMode = false, placeBuildingsMode = false, selectedBuildingType = "house", resetRoadsRef = null, children }) {
   const [dimensions, setDimensions] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -71,6 +72,19 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
   const [elevationMap, setElevationMap] = useState(baseElevation);
   const [roadSet, setRoadSet] = useState(() => new Map());
 
+  // Building state
+  const [buildingMap, setBuildingMap] = useState(() => new Map());
+  const [buildingSprites, setBuildingSprites] = useState(() => generateProceduralBuildingSprites());
+
+  // Load spritesheet-based building sprites asynchronously
+  useEffect(() => {
+    generateAllBuildingSprites().then(sprites => {
+      setBuildingSprites(sprites);
+    }).catch(err => {
+      console.warn("Failed to load building spritesheets, keeping procedural sprites:", err);
+    });
+  }, []);
+
   // Road drawing state
   const [roadStartTile, setRoadStartTile] = useState(null);
   const [roadPreviewPath, setRoadPreviewPath] = useState(null);
@@ -90,9 +104,21 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     setRoadSet(newRoads);
   }, [elevationMap, roadSet]);
 
+  const placeBuilding = useCallback((x, y, typeName) => {
+    if (!canPlaceBuilding(x, y, typeName, elevationMap, roadSet, buildingMap)) return false;
+    const variant = Math.floor(Math.random() * 9);
+    setBuildingMap(placeBuildingInMap(x, y, typeName, buildingMap, variant));
+    return true;
+  }, [elevationMap, roadSet, buildingMap]);
+
+  const removeBuilding = useCallback((x, y) => {
+    setBuildingMap(removeBuildingFromMap(x, y, buildingMap));
+  }, [buildingMap]);
+
   const resetRoads = useCallback(() => {
     setElevationMap(baseElevation);
     setRoadSet(new Map());
+    setBuildingMap(new Map());
     setRoadStartTile(null);
     setRoadPreviewPath(null);
   }, [baseElevation]);
@@ -100,8 +126,10 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
   const drawRoadGrid = useCallback(() => {
     const newElevation = baseElevation.map(row => [...row]);
     const roads = generateRoads(gridWidth, gridHeight, newElevation);
+    const newBuildings = autoFillBuildings(newElevation, roads, new Map());
     setElevationMap(newElevation);
     setRoadSet(roads);
+    setBuildingMap(newBuildings);
     setRoadStartTile(null);
     setRoadPreviewPath(null);
   }, [baseElevation]);
@@ -114,21 +142,33 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     const newRoads = new Map(roadSet);
     newRoads.delete(`${x},${y}`);
 
+    // Remove any building on this tile
+    let newBuildings = buildingMap;
+    if (buildingMap.has(`${x},${y}`)) {
+      newBuildings = removeBuildingFromMap(x, y, buildingMap);
+    }
+
     setElevationMap(newElevation);
     setRoadSet(newRoads);
-  }, [elevationMap, baseElevation, roadSet]);
+    setBuildingMap(newBuildings);
+  }, [elevationMap, baseElevation, roadSet, buildingMap]);
 
   const destroyTiles = useCallback((tileList) => {
     const newElevation = elevationMap.map(row => [...row]);
     const newRoads = new Map(roadSet);
+    let newBuildings = buildingMap;
     for (const { x, y } of tileList) {
       newElevation[y][x] = baseElevation[y][x];
       newRoads.delete(`${x},${y}`);
+      if (newBuildings.has(`${x},${y}`)) {
+        newBuildings = removeBuildingFromMap(x, y, newBuildings);
+      }
     }
     taperElevation(newElevation, gridWidth, gridHeight);
     setElevationMap(newElevation);
     setRoadSet(newRoads);
-  }, [elevationMap, baseElevation, roadSet]);
+    setBuildingMap(newBuildings);
+  }, [elevationMap, baseElevation, roadSet, buildingMap]);
 
   // Expose callbacks to parent via ref
   useEffect(() => {
@@ -212,6 +252,13 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     setRoadPreviewPath,
     placeRoad,
     resetRoads,
+    roadSet,
+    buildingMap,
+    buildingSprites,
+    placeBuilding,
+    removeBuilding,
+    placeBuildingsMode,
+    selectedBuildingType,
   };
 
   return <CityContext.Provider value={value}>{children}</CityContext.Provider>;

@@ -87,6 +87,8 @@ const App = () => {
   const [showRain, setShowRain] = useState(true);
   const [drawRoadsMode, setDrawRoadsMode] = useState(false);
   const [destructionMode, setDestructionMode] = useState(false);
+  const [placeBuildingsMode, setPlaceBuildingsMode] = useState(false);
+  const [selectedBuildingType, setSelectedBuildingType] = useState("house");
   const resetRoadsRef = useRef(null);
 
   const playSounds = () => {
@@ -110,6 +112,8 @@ const App = () => {
         showDebugLayer={showDebugLayer}
         drawRoadsMode={drawRoadsMode}
         destructionMode={destructionMode}
+        placeBuildingsMode={placeBuildingsMode}
+        selectedBuildingType={selectedBuildingType}
         resetRoadsRef={resetRoadsRef}
       />
       {showRain && <RainCanvas />}
@@ -175,14 +179,26 @@ const App = () => {
               <label><input type="checkbox" checked={showRoads} onChange={() => setShowRoads(!showRoads)} /> Roads</label><br />
               <label><input type="checkbox" checked={showDebugLayer} onChange={() => setShowDebugLayer(!showDebugLayer)} /> Debug Layer</label><br />
               <label><input type="checkbox" checked={showRain} onChange={() => setShowRain(!showRain)} /> Show Rain</label><br />
-              <label><input type="checkbox" checked={drawRoadsMode} onChange={() => { setDrawRoadsMode(!drawRoadsMode); if (!drawRoadsMode) setDestructionMode(false); }} /> Draw Roads</label><br />
-              <label><input type="checkbox" checked={destructionMode} onChange={() => { setDestructionMode(!destructionMode); if (!destructionMode) setDrawRoadsMode(false); }} /> Destruction</label>
+              <label><input type="checkbox" checked={drawRoadsMode} onChange={() => { setDrawRoadsMode(!drawRoadsMode); if (!drawRoadsMode) { setDestructionMode(false); setPlaceBuildingsMode(false); } }} /> Draw Roads</label><br />
+              <label><input type="checkbox" checked={placeBuildingsMode} onChange={() => { setPlaceBuildingsMode(!placeBuildingsMode); if (!placeBuildingsMode) { setDrawRoadsMode(false); setDestructionMode(false); } }} /> Place Buildings</label>
+              {placeBuildingsMode && (
+                <select
+                  value={selectedBuildingType}
+                  onChange={e => setSelectedBuildingType(e.target.value)}
+                  style={{ marginLeft: 8, fontSize: 12, background: '#444', color: '#fff', border: '1px solid #666', borderRadius: 4, padding: '2px 4px' }}
+                >
+                  <option value="house">House (1x1)</option>
+                  <option value="apartment">Apartment (2x2)</option>
+                  <option value="mixeduse">Mixed Use (2x2)</option>
+                </select>
+              )}<br />
+              <label><input type="checkbox" checked={destructionMode} onChange={() => { setDestructionMode(!destructionMode); if (!destructionMode) { setDrawRoadsMode(false); setPlaceBuildingsMode(false); } }} /> Destruction</label>
               <div style={{ marginTop: 4, marginLeft: 20, display: 'flex', gap: 4 }}>
                 <button
                   onClick={() => resetRoadsRef.current?.drawRoadGrid()}
-                  style={{ padding: '2px 8px', fontSize: 12, background: '#555', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ padding: '2px 8px', fontSize: 12, background: '#556b2f', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                 >
-                  Draw Road Grid
+                  Build City
                 </button>
                 <button
                   onClick={() => resetRoadsRef.current?.resetRoads()}

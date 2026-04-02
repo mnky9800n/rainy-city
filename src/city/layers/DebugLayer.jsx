@@ -4,8 +4,9 @@ import { getOffsets, screenToTile } from '../isometric.js';
 import { toScreenCoords } from '../rendering.js';
 import { tileWidth, tileHeight, elevationScale, gridWidth, gridHeight } from '../constants.js';
 import { findRoadPath } from '../pathfinding.js';
+import { buildingTypes, canPlaceBuilding } from '../buildings.js';
 
-const DebugLayer = () => {
+const DebugLayer = ({ onBuildingClick }) => {
   const canvasRef = useRef(null);
   const {
     dimensions, zoom, panX, panY, tiles, elevationMap, cornerMatrix,
@@ -13,9 +14,10 @@ const DebugLayer = () => {
     drawRoadsMode, roadStartTile, setRoadStartTile,
     roadPreviewPath, setRoadPreviewPath, placeRoad,
     destructionMode, destroyTile, destroyTiles,
+    roadSet, buildingMap, placeBuilding, placeBuildingsMode, selectedBuildingType,
   } = useCityContext();
 
-  const interactionEnabled = debugMode || drawRoadsMode || destructionMode;
+  const interactionEnabled = debugMode || drawRoadsMode || destructionMode || placeBuildingsMode;
 
   const bulldozerCursor = 'url(/bulldozer.png) 16 16, auto';
 
@@ -124,6 +126,25 @@ const DebugLayer = () => {
       }
     }
 
+    // Draw building placement footprint preview
+    if (placeBuildingsMode && hoveredTile) {
+      const bType = buildingTypes[selectedBuildingType];
+      if (bType) {
+        const [fw, fh] = bType.footprint;
+        const canPlace = canPlaceBuilding(hoveredTile.x, hoveredTile.y, selectedBuildingType, elevationMap, roadSet, buildingMap);
+        const color = canPlace ? '#00ff00' : '#ff0000';
+        for (let dy = 0; dy < fh; dy++) {
+          for (let dx = 0; dx < fw; dx++) {
+            const tx = hoveredTile.x + dx;
+            const ty = hoveredTile.y + dy;
+            if (tx >= 0 && tx < gridWidth && ty >= 0 && ty < gridHeight && elevationMap[ty][tx] > 0) {
+              drawDiamond(tx, ty, elevationMap[ty][tx], color, 0.4);
+            }
+          }
+        }
+      }
+    }
+
     if ((debugMode || drawRoadsMode || destructionMode) && hoveredTile) {
       // Skip single-tile hover when dragging in destruction mode
       const showHover = !(destructionMode && dragRef.current);
@@ -140,7 +161,7 @@ const DebugLayer = () => {
     }
 
     return { offsetX, offsetY };
-  }, [dimensions, zoom, panX, panY, tiles, hoveredTile, debugMode, drawRoadsMode, destructionMode, roadStartTile, roadPreviewPath, elevationMap]);
+  }, [dimensions, zoom, panX, panY, tiles, hoveredTile, debugMode, drawRoadsMode, destructionMode, roadStartTile, roadPreviewPath, elevationMap, placeBuildingsMode, selectedBuildingType, roadSet, buildingMap]);
 
   // Animation loop for explosions
   const runExplosionLoop = useCallback(() => {
@@ -235,6 +256,10 @@ const DebugLayer = () => {
 
     const handleMouseDown = (e) => {
       if (e.button !== 0) return; // left click only
+      if (placeBuildingsMode) {
+        e.stopPropagation(); // prevent ZoomContainer from panning during building placement
+        return;
+      }
       if (!destructionMode) return;
       const { tileX, tileY } = getTileAt(e);
       if (tileX < 0 || tileX >= gridWidth || tileY < 0 || tileY >= gridHeight) return;
@@ -283,6 +308,11 @@ const DebugLayer = () => {
       // Destruction mode is handled by mousedown/mouseup
       if (destructionMode) return;
 
+      if (placeBuildingsMode) {
+        placeBuilding(tileX, tileY, selectedBuildingType);
+        return;
+      }
+
       if (drawRoadsMode) {
         const elevation = elevationMap[tileY][tileX];
         if (elevation <= 0) return; // Can't place roads on water
@@ -296,6 +326,16 @@ const DebugLayer = () => {
           setRoadPreviewPath(null);
         }
         return;
+      }
+
+      // Check for building click with popup content
+      const buildingEntry = buildingMap.get(`${tileX},${tileY}`);
+      if (buildingEntry && onBuildingClick) {
+        const bType = buildingTypes[buildingEntry.type];
+        if (bType && bType.popupContent) {
+          onBuildingClick(bType.popupContent, e.clientX, e.clientY);
+          return;
+        }
       }
 
       if (debugMode) {
@@ -360,7 +400,7 @@ const DebugLayer = () => {
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("contextmenu", handleContextMenu);
     };
-  }, [interactionEnabled, debugMode, drawRoadsMode, destructionMode, destroyTile, destroyTiles, dimensions, zoom, panX, panY, elevationMap, cornerMatrix, setHoveredTile, roadStartTile, setRoadStartTile, setRoadPreviewPath, placeRoad, spawnExplosion, runExplosionLoop, redrawOverlays]);
+  }, [interactionEnabled, debugMode, drawRoadsMode, destructionMode, destroyTile, destroyTiles, dimensions, zoom, panX, panY, elevationMap, cornerMatrix, setHoveredTile, roadStartTile, setRoadStartTile, setRoadPreviewPath, placeRoad, spawnExplosion, runExplosionLoop, redrawOverlays, buildingMap, onBuildingClick, placeBuildingsMode, selectedBuildingType, placeBuilding]);
 
   // Clear road drawing state when mode is disabled
   useEffect(() => {
@@ -384,7 +424,7 @@ const DebugLayer = () => {
         display: "block",
         zIndex: 5,
         pointerEvents: interactionEnabled ? "auto" : "none",
-        cursor: destructionMode ? bulldozerCursor : drawRoadsMode ? "crosshair" : debugMode ? "crosshair" : "default",
+        cursor: destructionMode ? bulldozerCursor : (drawRoadsMode || placeBuildingsMode) ? "crosshair" : debugMode ? "crosshair" : "default",
       }}
     />
   );

@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Example: ./create "a 32x32 pixel art building with a red roof, top-down isometric view"
+set -euo pipefail
+
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+OPENAI_KEY=$(cat "$(dirname "$0")/openaikey")
+
+if [ -z "${1:-}" ]; then
+  echo "Usage: ./create <prompt>" >&2
+  exit 1
+fi
+
+RESPONSE=$(curl -s \
+  -X POST "https://api.openai.com/v1/images/generations" \
+  -H "Authorization: Bearer ${OPENAI_KEY}" \
+  -H "Content-type: application/json" \
+  -d "{
+    \"model\": \"gpt-image-1.5\",
+    \"prompt\": \"$1\"
+  }")
+
+B64=$(echo "$RESPONSE" | jq -r '.data[0].b64_json // empty')
+
+if [ -z "$B64" ]; then
+  echo "API error:" >&2
+  echo "$RESPONSE" | jq . 2>/dev/null || echo "$RESPONSE" >&2
+  exit 1
+fi
+
+echo "$B64" | base64 --decode > "${TIMESTAMP}-out.png"
+echo "Saved ${TIMESTAMP}-out.png"
