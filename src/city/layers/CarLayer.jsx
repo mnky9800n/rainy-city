@@ -404,11 +404,30 @@ const CarLayer = React.memo(() => {
       }
 
       // --- Compute car screen positions and depths ---
+      // Lane offset: push each car to the right side of the road relative to
+      // its travel direction. The "right" perpendicular in screen space is
+      // derived from the forward direction rotated 90° clockwise.
+      const LANE_OFFSET = 5; // pixels at zoom 1
+
       const carDrawList = [];
       for (const car of cars) {
         const fracX = car.tileX + car.dir.dx * car.progress;
         const fracY = car.tileY + car.dir.dy * car.progress;
-        const { screenX, screenY } = toScreenCoords(fracX, fracY, zoom, offsetX, offsetY);
+        const { screenX: rawSX, screenY: rawSY } = toScreenCoords(fracX, fracY, zoom, offsetX, offsetY);
+
+        // toScreenCoords gives the north point of the tile diamond.
+        // Shift to tile center (half a tile height down).
+        const centerSX = rawSX;
+        const centerSY = rawSY + (tileHeight / 2) * zoom;
+
+        // Compute right-perpendicular offset for lane positioning
+        const dirKey = `${car.dir.dx},${car.dir.dy}`;
+        const fwd = DIR_SCREEN[dirKey];
+        const fMag = fwd ? Math.sqrt(fwd.sx * fwd.sx + fwd.sy * fwd.sy) : 1;
+        const laneOff = LANE_OFFSET * zoom;
+        const screenX = centerSX - (fwd ? (fwd.sy / fMag) * laneOff : 0);
+        const screenY = centerSY + (fwd ? (fwd.sx / fMag) * laneOff : 0);
+
         const curElev = eMap[car.tileY]?.[car.tileX] ?? 0;
         const nxtElev = eMap[car.nextTileY]?.[car.nextTileX] ?? 0;
         const elev = curElev + (nxtElev - curElev) * car.progress;
