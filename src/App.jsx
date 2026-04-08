@@ -245,6 +245,9 @@ const App = () => {
           <a href="https://www.recurse.com/scout/click?t=b58615edb1a9f39bd1da060941fc2656" target="_blank" rel="noopener noreferrer" title="Recurse Center">
             <img src="./rc.png" alt="Join the Recurse Center" style={{ width: 24, height: 24 }} />
           </a>
+          <a href="https://rcade.dev/games/streets-of-rainy-city" target="_blank" rel="noopener noreferrer" title="Streets of Rainy City">
+            <img src="./streets.png" alt="Streets of Rainy City" style={{ width: 24, height: 24, borderRadius: 4 }} />
+          </a>
         </div>
       </DraggableWindow>
     </div>
