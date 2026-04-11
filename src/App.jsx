@@ -248,6 +248,9 @@ const App = () => {
           <a href="https://rcade.dev/games/streets-of-rainy-city" target="_blank" rel="noopener noreferrer" title="Streets of Rainy City">
             <img src="./streets.png" alt="Streets of Rainy City" style={{ width: 24, height: 24, borderRadius: 4 }} />
           </a>
+          <a href="https://www.lowimpactfruit.com/p/rainy-citycom-a-side-project-i-have" target="_blank" rel="noopener noreferrer" title="Low Impact Fruit: rainy-city.com">
+            <img src="./banana.png" alt="Low Impact Fruit" style={{ width: 24, height: 24, borderRadius: 4 }} />
+          </a>
         </div>
       </DraggableWindow>
     </div>
