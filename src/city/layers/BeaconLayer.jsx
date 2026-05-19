@@ -19,8 +19,17 @@ const BEACON_POSITIONS = {
   8: [{ x: 0.4688, y: 0.3156 }, { x: 0.2604, y: 0.3688 }, { x: 0.4583, y: 0.4094 }, { x: 0.6563, y: 0.3656 }],
 };
 
-// Single beacon at the antenna tip for radio towers
-const RADIO_TOWER_BEACONS = [{ x: 0.5, y: 0.015 }];
+// Beacons for the radio tower: antenna tip, upper observation deck corners,
+// and lower observation deck corners.
+const RADIO_TOWER_BEACONS = [
+  { x: 0.5039, y: 0.0656 },
+  { x: 0.4375, y: 0.2437 },
+  { x: 0.5,    y: 0.2531 },
+  { x: 0.5664, y: 0.2406 },
+  { x: 0.2969, y: 0.5281 },
+  { x: 0.4961, y: 0.5656 },
+  { x: 0.707,  y: 0.5219 },
+];
 
 const BeaconLayer = React.memo(() => {
   const canvasRef = useRef(null);
