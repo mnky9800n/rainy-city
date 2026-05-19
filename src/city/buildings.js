@@ -36,6 +36,18 @@ export const buildingTypes = {
     spriteHeight: 320,
     color: "#4a6a8a",
   },
+  radio_tower: {
+    footprint: [4, 4],
+    spriteWidth: 256,
+    spriteHeight: 640,
+    color: "#e63946",
+    popupContent: {
+      title: "Rainy City Radio 99.7FM",
+      description: "Broadcasting live 24/7 in Rainy City on 99.7FM and YouTube everywhere -- local news, weather, and trip hop across the city.",
+      linkUrl: "https://www.youtube.com/live/2Q7r9P16GRs",
+      linkText: "Tune in →",
+    },
+  },
 };
 
 // Adjust a hex color brightness by a percentage (-100 to +100)
@@ -376,7 +388,7 @@ export function applyRainyFilter(canvas) {
 
 // Load building spritesheets and return sliced variants.
 export async function loadBuildingSpritesheets() {
-  const [houseVariants, shopVariants, commercialVariants, apartmentVariants, skyscraperVariants] = await Promise.all([
+  const [houseVariants, shopVariants, commercialVariants, apartmentVariants, skyscraperVariants, radioTowerVariants] = await Promise.all([
     loadAndSliceSpritesheet(
       "/textures/buildings/houses.png",
       buildingTypes.house.spriteWidth,
@@ -402,9 +414,14 @@ export async function loadBuildingSpritesheets() {
       buildingTypes.skyscraper.spriteWidth,
       buildingTypes.skyscraper.spriteHeight
     ),
+    loadAndSliceSpritesheet(
+      "/textures/buildings/radio_tower.png",
+      buildingTypes.radio_tower.spriteWidth,
+      buildingTypes.radio_tower.spriteHeight
+    ),
   ]);
   // Apply rainy filter to all sprites
-  const filtered = { house: houseVariants, shop: shopVariants, commercial: commercialVariants, apartment: apartmentVariants, skyscraper: skyscraperVariants };
+  const filtered = { house: houseVariants, shop: shopVariants, commercial: commercialVariants, apartment: apartmentVariants, skyscraper: skyscraperVariants, radio_tower: radioTowerVariants };
   for (const variants of Object.values(filtered)) {
     if (Array.isArray(variants)) {
       variants.forEach(applyRainyFilter);
@@ -439,7 +456,7 @@ export function generateProceduralBuildingSprites() {
 // Generate all building sprites, loading spritesheets.
 export async function generateAllBuildingSprites() {
   const variants = await loadBuildingSpritesheets();
-  return { house: variants.house, shop: variants.shop, commercial: variants.commercial, apartment: variants.apartment, skyscraper: variants.skyscraper };
+  return { house: variants.house, shop: variants.shop, commercial: variants.commercial, apartment: variants.apartment, skyscraper: variants.skyscraper, radio_tower: variants.radio_tower };
 }
 
 // Check if a building can be placed at (x, y) with the given footprint.
@@ -448,6 +465,13 @@ export function canPlaceBuilding(x, y, typeName, elevationMap, roadSet, building
   const type = buildingTypes[typeName];
   if (!type) return false;
   const [fw, fh] = type.footprint;
+
+  // Radio tower is a city landmark — only one allowed.
+  if (typeName === "radio_tower") {
+    for (const entry of buildingMap.values()) {
+      if (entry.type === "radio_tower") return false;
+    }
+  }
 
   // Check bounds
   if (x < 0 || y < 0 || x + fw > gridWidth || y + fh > gridHeight) return false;
@@ -516,6 +540,24 @@ export function removeBuildingFromMap(x, y, buildingMap) {
 // Packs larger buildings first, then fills remaining gaps with smaller ones.
 export function autoFillBuildings(elevationMap, roadSet, existingBuildingMap) {
   let buildingMap = new Map(existingBuildingMap);
+
+  // Place a single radio tower near the city center as a landmark, before
+  // filling the rest. Spiral outward from center until a valid 2x2 spot is found.
+  const ccx = Math.floor(gridWidth / 2);
+  const ccy = Math.floor(gridHeight / 2);
+  outer: for (let r = 0; r < Math.max(gridWidth, gridHeight); r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (r > 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+        const x = ccx + dx;
+        const y = ccy + dy;
+        if (canPlaceBuilding(x, y, "radio_tower", elevationMap, roadSet, buildingMap)) {
+          buildingMap = placeBuildingInMap(x, y, "radio_tower", buildingMap, 0);
+          break outer;
+        }
+      }
+    }
+  }
 
   // Simple seeded PRNG
   let seed = 54321;

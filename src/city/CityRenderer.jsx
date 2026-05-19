@@ -11,7 +11,8 @@ import DebugLayer from './layers/DebugLayer.jsx';
 import InfoPopup from './InfoPopup.jsx';
 import { buildingTypes } from './buildings.js';
 import { getOffsets, screenToTile } from './isometric.js';
-import { gridWidth, gridHeight } from './constants.js';
+import { toScreenCoords } from './rendering.js';
+import { gridWidth, gridHeight, tileHeight, elevationScale } from './constants.js';
 
 const ZoomContainer = ({ children, onClick }) => {
   const containerRef = useRef(null);
@@ -198,7 +199,7 @@ const FadeOverlay = ({ loaded }) => {
 };
 
 const CityInner = ({ showSeafloor, showWaterSurface, showTerrain, showRoads, showDebugLayer, infoPopup, setInfoPopup, onLoaded }) => {
-  const { dimensions, zoom, panX, panY, buildingMap, drawRoadsMode, destructionMode, loaded } = useCityContext();
+  const { dimensions, zoom, panX, panY, buildingMap, elevationMap, drawRoadsMode, destructionMode, loaded } = useCityContext();
 
   useEffect(() => {
     if (loaded && onLoaded) onLoaded();
@@ -229,6 +230,39 @@ const CityInner = ({ showSeafloor, showWaterSurface, showTerrain, showRoads, sho
     if (drawRoadsMode || destructionMode) return;
 
     const { offsetX, offsetY } = getOffsets(dimensions, zoom, panX, panY);
+
+    // Radio tower: hit-test the full sprite bounding box and open the stream
+    // directly. Its sprite extends far above the 4x4 footprint, so plain
+    // tile-click misses most of the visible tower.
+    for (const entry of buildingMap.values()) {
+      if (entry.type !== 'radio_tower') continue;
+      const bType = buildingTypes.radio_tower;
+      const [fw, fh] = bType.footprint;
+      const sx = entry.originX + fw - 1;
+      const sy = entry.originY + fh - 1;
+      const { screenX, screenY } = toScreenCoords(sx, sy, zoom, offsetX, offsetY);
+      const elev = elevationMap[sy]?.[sx] ?? 0;
+      const yOff = -elev * elevationScale * zoom;
+      const spriteW = bType.spriteWidth * zoom;
+      const spriteH = bType.spriteHeight * zoom;
+      const drawX = screenX - spriteW / 2;
+      const drawY = screenY + yOff - spriteH + (tileHeight * zoom);
+      if (
+        e.clientX >= drawX && e.clientX <= drawX + spriteW &&
+        e.clientY >= drawY && e.clientY <= drawY + spriteH
+      ) {
+        if (bType.popupContent) {
+          setInfoPopup({
+            ...bType.popupContent,
+            screenX: e.clientX,
+            screenY: e.clientY,
+          });
+        }
+        return;
+      }
+      break;
+    }
+
     const { tileX, tileY } = screenToTile(e.clientX, e.clientY, zoom, offsetX, offsetY);
 
     if (tileX < 0 || tileX >= gridWidth || tileY < 0 || tileY >= gridHeight) return;
@@ -244,7 +278,7 @@ const CityInner = ({ showSeafloor, showWaterSurface, showTerrain, showRoads, sho
         });
       }
     }
-  }, [dimensions, zoom, panX, panY, buildingMap, drawRoadsMode, destructionMode, setInfoPopup]);
+  }, [dimensions, zoom, panX, panY, buildingMap, elevationMap, drawRoadsMode, destructionMode, setInfoPopup]);
 
   return (
     <>

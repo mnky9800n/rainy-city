@@ -19,6 +19,9 @@ const BEACON_POSITIONS = {
   8: [{ x: 0.4688, y: 0.3156 }, { x: 0.2604, y: 0.3688 }, { x: 0.4583, y: 0.4094 }, { x: 0.6563, y: 0.3656 }],
 };
 
+// Single beacon at the antenna tip for radio towers
+const RADIO_TOWER_BEACONS = [{ x: 0.5, y: 0.015 }];
+
 const BeaconLayer = React.memo(() => {
   const canvasRef = useRef(null);
   const { dimensions, viewRef, buildingMap, elevationMap } = useCityContext();
@@ -61,16 +64,18 @@ const BeaconLayer = React.memo(() => {
 
       const elapsed = (timestamp - startTime) / 1000;
 
-      // Collect unique skyscraper origins
+      // Collect unique skyscraper and radio tower origins
       const drawn = new Set();
       for (const [key, building] of bMap) {
-        if (building.type !== 'skyscraper') continue;
+        if (building.type !== 'skyscraper' && building.type !== 'radio_tower') continue;
         const originKey = `${building.originX},${building.originY}`;
         if (drawn.has(originKey)) continue;
         drawn.add(originKey);
 
         const variant = building.variant ?? 0;
-        const positions = BEACON_POSITIONS[variant];
+        const positions = building.type === 'radio_tower'
+          ? RADIO_TOWER_BEACONS
+          : BEACON_POSITIONS[variant];
         if (!positions) continue;
 
         const bType = buildingTypes[building.type];
