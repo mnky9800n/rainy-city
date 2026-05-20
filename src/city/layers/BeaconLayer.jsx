@@ -31,6 +31,15 @@ const RADIO_TOWER_BEACONS = [
   { x: 0.707,  y: 0.5219 },
 ];
 
+// Beacons for the Low Impact Fruit (NYT-style) tower: antenna tip and the
+// four crown corners of the small setback box at the top of the building.
+const NYT_TOWER_BEACONS = [
+  { x: 0.5365, y: 0.0063 },
+  { x: 0.1979, y: 0.2313 },
+  { x: 0.4896, y: 0.2687 },
+  { x: 0.7865, y: 0.2062 },
+];
+
 const BeaconLayer = React.memo(() => {
   const canvasRef = useRef(null);
   const { dimensions, viewRef, buildingMap, elevationMap } = useCityContext();
@@ -76,15 +85,16 @@ const BeaconLayer = React.memo(() => {
       // Collect unique skyscraper and radio tower origins
       const drawn = new Set();
       for (const [key, building] of bMap) {
-        if (building.type !== 'skyscraper' && building.type !== 'radio_tower') continue;
+        if (building.type !== 'skyscraper' && building.type !== 'radio_tower' && building.type !== 'nyt_tower') continue;
         const originKey = `${building.originX},${building.originY}`;
         if (drawn.has(originKey)) continue;
         drawn.add(originKey);
 
         const variant = building.variant ?? 0;
-        const positions = building.type === 'radio_tower'
-          ? RADIO_TOWER_BEACONS
-          : BEACON_POSITIONS[variant];
+        const positions =
+          building.type === 'radio_tower' ? RADIO_TOWER_BEACONS :
+          building.type === 'nyt_tower'   ? NYT_TOWER_BEACONS :
+          BEACON_POSITIONS[variant];
         if (!positions) continue;
 
         const bType = buildingTypes[building.type];
