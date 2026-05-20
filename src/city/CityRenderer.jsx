@@ -231,12 +231,17 @@ const CityInner = ({ showSeafloor, showWaterSurface, showTerrain, showRoads, sho
 
     const { offsetX, offsetY } = getOffsets(dimensions, zoom, panX, panY);
 
-    // Radio tower: hit-test the full sprite bounding box and open the stream
-    // directly. Its sprite extends far above the 4x4 footprint, so plain
-    // tile-click misses most of the visible tower.
+    // Tall landmarks: hit-test the full sprite bounding box. Their sprites
+    // extend far above the footprint diamond, so a plain tile-click misses
+    // most of the visible building.
+    const seenLandmarks = new Set();
     for (const entry of buildingMap.values()) {
-      if (entry.type !== 'radio_tower') continue;
-      const bType = buildingTypes.radio_tower;
+      const bType = buildingTypes[entry.type];
+      if (!bType?.fullSpriteHitTest) continue;
+      const originKey = `${entry.originX},${entry.originY}`;
+      if (seenLandmarks.has(originKey)) continue;
+      seenLandmarks.add(originKey);
+
       const [fw, fh] = bType.footprint;
       const sx = entry.originX + fw - 1;
       const sy = entry.originY + fh - 1;
@@ -260,7 +265,6 @@ const CityInner = ({ showSeafloor, showWaterSurface, showTerrain, showRoads, sho
         }
         return;
       }
-      break;
     }
 
     const { tileX, tileY } = screenToTile(e.clientX, e.clientY, zoom, offsetX, offsetY);

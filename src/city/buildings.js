@@ -41,11 +41,25 @@ export const buildingTypes = {
     spriteWidth: 256,
     spriteHeight: 640,
     color: "#e63946",
+    fullSpriteHitTest: true,
     popupContent: {
       title: "Rainy City Radio 99.7FM",
       description: "Broadcasting live 24/7 in Rainy City on 99.7FM and YouTube everywhere -- local news, weather, and trip hop across the city.",
       linkUrl: "https://www.youtube.com/live/2Q7r9P16GRs",
       linkText: "Tune in →",
+    },
+  },
+  nyt_tower: {
+    footprint: [3, 3],
+    spriteWidth: 192,
+    spriteHeight: 480,
+    color: "#b0bcc9",
+    fullSpriteHitTest: true,
+    popupContent: {
+      title: "Low Impact Fruit",
+      description: "Low Impact Fruit is an online magazine for the expression of ideas that are somewhere between a post on social media and a scientific publication. We publish opinion articles, articles about technology and its overlap with culture, academia, life, scientific analysis articles, history of science and technology, and articles on managing technical people. This list of topics is non-exhaustive and set to expand. Low Impact Fruit will always be free but your paid subscriptions help us organize and publicize the magazine.",
+      linkUrl: "https://lowimpactfruit.com",
+      linkText: "Visit lowimpactfruit.com →",
     },
   },
 };
@@ -388,7 +402,7 @@ export function applyRainyFilter(canvas) {
 
 // Load building spritesheets and return sliced variants.
 export async function loadBuildingSpritesheets() {
-  const [houseVariants, shopVariants, commercialVariants, apartmentVariants, skyscraperVariants, radioTowerVariants] = await Promise.all([
+  const [houseVariants, shopVariants, commercialVariants, apartmentVariants, skyscraperVariants, radioTowerVariants, nytTowerVariants] = await Promise.all([
     loadAndSliceSpritesheet(
       "/textures/buildings/houses.png",
       buildingTypes.house.spriteWidth,
@@ -419,9 +433,15 @@ export async function loadBuildingSpritesheets() {
       buildingTypes.radio_tower.spriteWidth,
       buildingTypes.radio_tower.spriteHeight
     ),
+    loadAndSliceSpritesheet(
+      "/textures/buildings/nyt_tower.png",
+      buildingTypes.nyt_tower.spriteWidth,
+      buildingTypes.nyt_tower.spriteHeight
+    ),
   ]);
+
   // Apply rainy filter to all sprites
-  const filtered = { house: houseVariants, shop: shopVariants, commercial: commercialVariants, apartment: apartmentVariants, skyscraper: skyscraperVariants, radio_tower: radioTowerVariants };
+  const filtered = { house: houseVariants, shop: shopVariants, commercial: commercialVariants, apartment: apartmentVariants, skyscraper: skyscraperVariants, radio_tower: radioTowerVariants, nyt_tower: nytTowerVariants };
   for (const variants of Object.values(filtered)) {
     if (Array.isArray(variants)) {
       variants.forEach(applyRainyFilter);
@@ -456,7 +476,7 @@ export function generateProceduralBuildingSprites() {
 // Generate all building sprites, loading spritesheets.
 export async function generateAllBuildingSprites() {
   const variants = await loadBuildingSpritesheets();
-  return { house: variants.house, shop: variants.shop, commercial: variants.commercial, apartment: variants.apartment, skyscraper: variants.skyscraper, radio_tower: variants.radio_tower };
+  return { house: variants.house, shop: variants.shop, commercial: variants.commercial, apartment: variants.apartment, skyscraper: variants.skyscraper, radio_tower: variants.radio_tower, nyt_tower: variants.nyt_tower };
 }
 
 // Check if a building can be placed at (x, y) with the given footprint.
@@ -466,10 +486,10 @@ export function canPlaceBuilding(x, y, typeName, elevationMap, roadSet, building
   if (!type) return false;
   const [fw, fh] = type.footprint;
 
-  // Radio tower is a city landmark — only one allowed.
-  if (typeName === "radio_tower") {
+  // Singleton landmarks — only one of each allowed.
+  if (typeName === "radio_tower" || typeName === "nyt_tower") {
     for (const entry of buildingMap.values()) {
-      if (entry.type === "radio_tower") return false;
+      if (entry.type === typeName) return false;
     }
   }
 
@@ -541,23 +561,33 @@ export function removeBuildingFromMap(x, y, buildingMap) {
 export function autoFillBuildings(elevationMap, roadSet, existingBuildingMap) {
   let buildingMap = new Map(existingBuildingMap);
 
-  // Place a single radio tower near the city center as a landmark, before
-  // filling the rest. Spiral outward from center until a valid 2x2 spot is found.
+  // Place singleton landmark buildings near the city center.
+  // Spiral outward from center until a valid spot is found for each.
   const ccx = Math.floor(gridWidth / 2);
   const ccy = Math.floor(gridHeight / 2);
-  outer: for (let r = 0; r < Math.max(gridWidth, gridHeight); r++) {
-    for (let dy = -r; dy <= r; dy++) {
-      for (let dx = -r; dx <= r; dx++) {
-        if (r > 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
-        const x = ccx + dx;
-        const y = ccy + dy;
-        if (canPlaceBuilding(x, y, "radio_tower", elevationMap, roadSet, buildingMap)) {
-          buildingMap = placeBuildingInMap(x, y, "radio_tower", buildingMap, 0);
-          break outer;
+
+  function placeLandmarkNearCenter(typeName, seedOffsetX = 0, seedOffsetY = 0) {
+    const sx = ccx + seedOffsetX;
+    const sy = ccy + seedOffsetY;
+    for (let r = 0; r < Math.max(gridWidth, gridHeight); r++) {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (r > 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+          const x = sx + dx;
+          const y = sy + dy;
+          if (canPlaceBuilding(x, y, typeName, elevationMap, roadSet, buildingMap)) {
+            buildingMap = placeBuildingInMap(x, y, typeName, buildingMap, 0);
+            return true;
+          }
         }
       }
     }
+    return false;
   }
+
+  placeLandmarkNearCenter("radio_tower");
+  // Place NYT tower offset from city center so it doesn't fight the radio tower.
+  placeLandmarkNearCenter("nyt_tower", 8, -8);
 
   // Simple seeded PRNG
   let seed = 54321;
