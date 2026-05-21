@@ -45,7 +45,7 @@ export const buildingTypes = {
     popupContent: {
       title: "Rainy City Radio 99.7FM",
       description: "Broadcasting live 24/7 in Rainy City on 99.7FM and YouTube everywhere -- local news, weather, and trip hop across the city.",
-      linkUrl: "https://www.youtube.com/live/2Q7r9P16GRs",
+      linkUrl: "https://www.youtube.com/@rainy-city-radio/live",
       linkText: "Tune in →",
     },
   },
