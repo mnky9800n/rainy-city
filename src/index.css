@@ -2,6 +2,355 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Mac OS 9 fonts — Chicago for titles/menus, Geneva for body.
+   Sourced from sakofchit/system.css (a public Mac OS 9 CSS library). */
+@font-face {
+  font-family: "ChicagoFLF";
+  src: url("https://cdn.jsdelivr.net/gh/sakofchit/system.css@main/public/fonts/ChicagoFLF.woff") format("woff");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Geneva9";
+  src: url("https://cdn.jsdelivr.net/gh/sakofchit/system.css@main/public/fonts/Geneva-9.woff") format("woff");
+  font-display: swap;
+}
+
 body {
   background: #1a202c; /* Deep gray for cyberpunk night */
+}
+
+/* ---------- Mac OS 9 Platinum window chrome ---------- */
+
+:root {
+  --os9-bg: #dddddd;
+  --os9-bg-light: #ececec;
+  --os9-bg-dark: #b8b8b8;
+  --os9-border: #000000;
+  --os9-bevel-light: #ffffff;
+  --os9-bevel-dark: #808080;
+  --os9-text: #000000;
+  --os9-font-title: "ChicagoFLF", "Chicago", "Geneva", "Tahoma", sans-serif;
+  --os9-font-body: "Geneva9", "Geneva", "Tahoma", "Arial", sans-serif;
+}
+
+.os9-window {
+  background: var(--os9-bg);
+  border: 1px solid var(--os9-border);
+  color: var(--os9-text);
+  font-family: var(--os9-font-body);
+  font-size: 12px;
+  line-height: 1.35;
+  box-shadow:
+    inset 1px 1px 0 var(--os9-bevel-light),
+    inset -1px -1px 0 var(--os9-bevel-dark),
+    2px 2px 0 rgba(0, 0, 0, 0.35);
+  user-select: none;
+}
+
+.os9-titlebar {
+  position: relative;
+  height: 18px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  cursor: move;
+  border-bottom: 1px solid var(--os9-border);
+  /* Horizontal pinstripes — the iconic OS 9 active titlebar */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    #d4d4d4 0px,
+    #d4d4d4 1px,
+    #f5f5f5 1px,
+    #f5f5f5 2px
+  );
+  box-shadow: inset 0 1px 0 var(--os9-bevel-light);
+}
+
+.os9-titlebar.inactive {
+  background-image: none;
+  background-color: var(--os9-bg);
+}
+
+.os9-close-box {
+  width: 11px;
+  height: 11px;
+  background: linear-gradient(to bottom right, #f5f5f5, #c0c0c0);
+  border: 1px solid var(--os9-border);
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #808080;
+  cursor: pointer;
+  padding: 0;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.os9-close-box:hover {
+  background: linear-gradient(to bottom right, #d8d8d8, #a8a8a8);
+}
+
+.os9-close-box:active {
+  background: #707070;
+  box-shadow: inset 1px 1px 0 #555555, inset -1px -1px 0 #ffffff;
+}
+
+.os9-title-text {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0 8px;
+  background: var(--os9-bg-light);
+  font-family: var(--os9-font-title);
+  font-size: 12px;
+  color: var(--os9-text);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.os9-content {
+  padding: 12px;
+}
+
+.os9-divider {
+  height: 1px;
+  background: var(--os9-bevel-dark);
+  box-shadow: 0 1px 0 var(--os9-bevel-light);
+  margin: 10px 0;
+}
+
+/* ---------- Buttons ---------- */
+
+.os9-button {
+  background: linear-gradient(to bottom, #ffffff 0%, #e0e0e0 50%, #c8c8c8 100%);
+  border: 1px solid var(--os9-border);
+  border-radius: 8px;
+  color: var(--os9-text);
+  font-family: var(--os9-font-title);
+  font-size: 12px;
+  padding: 3px 14px;
+  cursor: pointer;
+  box-shadow:
+    inset 1px 1px 0 #ffffff,
+    inset -1px -1px 0 #888888;
+  min-width: 60px;
+  line-height: 1.2;
+}
+
+.os9-button:hover {
+  background: linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 50%, #b8b8b8 100%);
+}
+
+.os9-button:active {
+  background: linear-gradient(to bottom, #a0a0a0 0%, #c0c0c0 100%);
+  box-shadow:
+    inset 1px 1px 0 #707070,
+    inset -1px -1px 0 #ffffff;
+}
+
+.os9-button.default {
+  border: 2px solid var(--os9-border);
+  font-weight: bold;
+}
+
+/* ---------- Checkboxes ---------- */
+
+.os9-checkbox {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border: 1px solid var(--os9-border);
+  box-shadow: inset 1px 1px 0 #888888;
+  cursor: pointer;
+  vertical-align: middle;
+  margin: 0 5px 0 0;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.os9-checkbox:checked::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: -2px;
+  width: 8px;
+  height: 9px;
+  border-right: 2px solid #000;
+  border-bottom: 2px solid #000;
+  transform: rotate(45deg);
+}
+
+.os9-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--os9-font-body);
+  font-size: 12px;
+  color: var(--os9-text);
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+/* ---------- Sliders ---------- */
+
+.os9-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: #ffffff;
+  border: 1px solid var(--os9-border);
+  box-shadow: inset 1px 1px 0 #888;
+  outline: none;
+  margin: 8px 0 6px;
+}
+
+.os9-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 18px;
+  background: linear-gradient(to bottom, #fafafa 0%, #d0d0d0 50%, #b0b0b0 100%);
+  border: 1px solid var(--os9-border);
+  border-radius: 2px;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #707070;
+  cursor: pointer;
+  margin-top: -8px;
+}
+
+.os9-slider::-moz-range-thumb {
+  width: 14px;
+  height: 18px;
+  background: linear-gradient(to bottom, #fafafa 0%, #d0d0d0 50%, #b0b0b0 100%);
+  border: 1px solid var(--os9-border);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.os9-label {
+  font-family: var(--os9-font-body);
+  font-size: 12px;
+  color: var(--os9-text);
+  display: block;
+  margin-top: 6px;
+}
+
+/* ---------- Select / popup menu ---------- */
+
+.os9-select {
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(to bottom, #ffffff 0%, #e0e0e0 100%);
+  border: 1px solid var(--os9-border);
+  border-radius: 0;
+  font-family: var(--os9-font-title);
+  font-size: 12px;
+  color: var(--os9-text);
+  padding: 2px 22px 2px 8px;
+  box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #888888;
+  cursor: pointer;
+  /* Tiny down-arrow tab on the right side */
+  background-image:
+    linear-gradient(to bottom, #ffffff 0%, #e0e0e0 100%),
+    linear-gradient(to bottom, #cfcfcf 0%, #a0a0a0 100%);
+  background-repeat: no-repeat;
+  background-position: 0 0, 100% 0;
+  background-size: calc(100% - 16px) 100%, 16px 100%;
+}
+
+.os9-select::after {
+  content: "▼";
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 8px;
+  pointer-events: none;
+}
+
+/* ---------- Icon button (toolbar-style square with bevel) ---------- */
+
+.os9-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+  background: linear-gradient(to bottom, #ffffff 0%, #e0e0e0 50%, #c8c8c8 100%);
+  border: 1px solid var(--os9-border);
+  box-shadow:
+    inset 1px 1px 0 #ffffff,
+    inset -1px -1px 0 #888888;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--os9-text);
+  flex-shrink: 0;
+}
+
+.os9-icon-button:hover {
+  background: linear-gradient(to bottom, #f0f0f0 0%, #d0d0d0 50%, #b8b8b8 100%);
+}
+
+.os9-icon-button:active {
+  background: linear-gradient(to bottom, #a0a0a0 0%, #c0c0c0 100%);
+  box-shadow:
+    inset 1px 1px 0 #707070,
+    inset -1px -1px 0 #ffffff;
+}
+
+.os9-icon-button img,
+.os9-icon-button svg {
+  display: block;
+  width: 26px;
+  height: 26px;
+}
+
+/* ---------- Link ---------- */
+
+.os9-link {
+  color: #0033cc;
+  text-decoration: underline;
+  font-family: var(--os9-font-body);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.os9-link:hover {
+  color: #0066ff;
+}
+
+/* ---------- Desktop "Control Panels" icon (closed-window reopen) ---------- */
+
+.os9-desktop-icon {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px;
+  font-family: var(--os9-font-title);
+  font-size: 11px;
+  color: #ffffff;
+  text-align: center;
+  text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+  user-select: none;
+}
+
+.os9-desktop-icon .icon-glyph {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(to bottom, #efefef, #b8b8b8);
+  border: 1px solid #000;
+  box-shadow: inset 1px 1px 0 #fff, inset -1px -1px 0 #707070;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: #000;
+  text-shadow: none;
+}
+
+.os9-desktop-icon:hover .icon-glyph {
+  background: linear-gradient(to bottom, #ffffff, #c8c8c8);
 }

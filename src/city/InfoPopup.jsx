@@ -58,60 +58,28 @@ const InfoPopup = ({ title, logoUrl, description, linkUrl, linkText, screenX, sc
   return (
     <div
       ref={popupRef}
+      className="os9-window"
       onClick={(e) => e.stopPropagation()}
       style={{
         position: "fixed",
         left: position.left,
         top: position.top,
         zIndex: 9998,
-        background: "rgba(0,0,0,0.8)",
-        color: "#fff",
-        borderRadius: 8,
-        boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
         minWidth: 260,
-        maxWidth: 320,
-        userSelect: "none",
-        fontFamily: "sans-serif",
+        maxWidth: 340,
       }}
     >
-      {/* Title bar — drag to move */}
-      <div
-        onMouseDown={onTitleBarMouseDown}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "8px 12px",
-          background: "#222",
-          borderTopLeftRadius: 8,
-          borderTopRightRadius: 8,
-          borderBottom: "1px solid #444",
-          cursor: "move",
-        }}
-      >
-        <span style={{ fontWeight: "bold", fontSize: 14 }}>
-          {title || "Info"}
-        </span>
+      <div className="os9-titlebar" onMouseDown={onTitleBarMouseDown}>
         <button
+          className="os9-close-box"
           onClick={onClose}
-          style={{
-            background: "#444",
-            border: "1px solid #666",
-            borderRadius: 4,
-            color: "#ccc",
-            fontSize: 14,
-            cursor: "pointer",
-            lineHeight: 1,
-            padding: "2px 7px",
-            fontFamily: "monospace",
-          }}
-        >
-          X
-        </button>
+          onMouseDown={(e) => e.stopPropagation()}
+          aria-label="Close"
+        />
+        <span className="os9-title-text">{title || "Info"}</span>
       </div>
 
-      {/* Content area */}
-      <div style={{ padding: 16 }}>
+      <div className="os9-content">
         {logoUrl && (
           <img
             src={logoUrl}
@@ -120,13 +88,12 @@ const InfoPopup = ({ title, logoUrl, description, linkUrl, linkText, screenX, sc
               height: 32,
               marginBottom: 10,
               display: "block",
-              filter: "brightness(0) invert(1)",
             }}
           />
         )}
 
         {description && (
-          <div style={{ fontSize: 13, lineHeight: 1.5, color: "#ccc", marginBottom: 12 }}>
+          <div style={{ fontSize: 12, lineHeight: 1.45, color: "#000", marginBottom: 10 }}>
             {description}
           </div>
         )}
@@ -136,11 +103,7 @@ const InfoPopup = ({ title, logoUrl, description, linkUrl, linkText, screenX, sc
             href={linkUrl}
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              fontSize: 13,
-              color: "#6cb4ee",
-              textDecoration: "none",
-            }}
+            className="os9-link"
           >
             {linkText || linkUrl}
           </a>
