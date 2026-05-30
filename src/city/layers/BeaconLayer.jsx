@@ -40,6 +40,92 @@ const NYT_TOWER_BEACONS = [
   { x: 0.7865, y: 0.2062 },
 ];
 
+// Cinema lights — STAR neon (pulsing pink), marquee bulbs (warm yellow chase),
+// roofline accent trim (cyan slow pulse). Placed via /cinema-beacon-tool.html.
+const CINEMA_LIGHTS = [
+  { x: 0.151, y: 0.3944, kind: "bulb" },
+  { x: 0.1875, y: 0.4167, kind: "bulb" },
+  { x: 0.2292, y: 0.4333, kind: "bulb" },
+  { x: 0.276, y: 0.4611, kind: "bulb" },
+  { x: 0.3229, y: 0.4778, kind: "bulb" },
+  { x: 0.3594, y: 0.5, kind: "bulb" },
+  { x: 0.401, y: 0.5167, kind: "bulb" },
+  { x: 0.4427, y: 0.5389, kind: "bulb" },
+  { x: 0.4844, y: 0.5667, kind: "bulb" },
+  { x: 0.5313, y: 0.5778, kind: "bulb" },
+  { x: 0.5677, y: 0.6056, kind: "bulb" },
+  { x: 0.6146, y: 0.6167, kind: "bulb" },
+  { x: 0.651, y: 0.6056, kind: "bulb" },
+  { x: 0.651, y: 0.6889, kind: "bulb" },
+  { x: 0.6146, y: 0.7111, kind: "bulb" },
+  { x: 0.5729, y: 0.7056, kind: "bulb" },
+  { x: 0.5417, y: 0.6778, kind: "bulb" },
+  { x: 0.5052, y: 0.6611, kind: "bulb" },
+  { x: 0.474, y: 0.6444, kind: "bulb" },
+  { x: 0.4427, y: 0.6333, kind: "bulb" },
+  { x: 0.4063, y: 0.6111, kind: "bulb" },
+  { x: 0.3698, y: 0.6, kind: "bulb" },
+  { x: 0.3385, y: 0.5778, kind: "bulb" },
+  { x: 0.3021, y: 0.5556, kind: "bulb" },
+  { x: 0.2656, y: 0.5389, kind: "bulb" },
+  { x: 0.224, y: 0.5167, kind: "bulb" },
+  { x: 0.1927, y: 0.5, kind: "bulb" },
+  { x: 0.151, y: 0.4833, kind: "bulb" },
+  { x: 0.3958, y: 0.1833, kind: "neon" },
+  { x: 0.3906, y: 0.1833, kind: "neon" },
+  { x: 0.3854, y: 0.1944, kind: "neon" },
+  { x: 0.3906, y: 0.2111, kind: "neon" },
+  { x: 0.401, y: 0.2222, kind: "neon" },
+  { x: 0.401, y: 0.2278, kind: "neon" },
+  { x: 0.3906, y: 0.2278, kind: "neon" },
+  { x: 0.3802, y: 0.2556, kind: "neon" },
+  { x: 0.3958, y: 0.2611, kind: "neon" },
+  { x: 0.401, y: 0.2611, kind: "neon" },
+  { x: 0.3906, y: 0.2667, kind: "neon" },
+  { x: 0.3906, y: 0.2778, kind: "neon" },
+  { x: 0.3906, y: 0.2944, kind: "neon" },
+  { x: 0.3906, y: 0.3222, kind: "neon" },
+  { x: 0.3854, y: 0.3278, kind: "neon" },
+  { x: 0.3802, y: 0.3389, kind: "neon" },
+  { x: 0.3802, y: 0.35, kind: "neon" },
+  { x: 0.3958, y: 0.3278, kind: "neon" },
+  { x: 0.3958, y: 0.3389, kind: "neon" },
+  { x: 0.401, y: 0.3556, kind: "neon" },
+  { x: 0.3906, y: 0.3444, kind: "neon" },
+  { x: 0.3906, y: 0.3889, kind: "neon" },
+  { x: 0.401, y: 0.3889, kind: "neon" },
+  { x: 0.401, y: 0.4, kind: "neon" },
+  { x: 0.3854, y: 0.4, kind: "neon" },
+  { x: 0.3854, y: 0.3833, kind: "neon" },
+  { x: 0.3906, y: 0.4222, kind: "neon" },
+  { x: 0.3854, y: 0.4278, kind: "neon" },
+  { x: 0.3958, y: 0.4222, kind: "neon" },
+  { x: 0.401, y: 0.4278, kind: "neon" },
+  { x: 0.401, y: 0.4389, kind: "neon" },
+  { x: 0.4688, y: 0.2833, kind: "accent" },
+  { x: 0.5, y: 0.3, kind: "accent" },
+  { x: 0.5313, y: 0.3167, kind: "accent" },
+  { x: 0.5625, y: 0.3278, kind: "accent" },
+  { x: 0.599, y: 0.3444, kind: "accent" },
+  { x: 0.6354, y: 0.3333, kind: "accent" },
+  { x: 0.6563, y: 0.3611, kind: "accent" },
+  { x: 0.6875, y: 0.35, kind: "accent" },
+  { x: 0.724, y: 0.3333, kind: "accent" },
+  { x: 0.7552, y: 0.3111, kind: "accent" },
+  { x: 0.7917, y: 0.2944, kind: "accent" },
+  { x: 0.8229, y: 0.2778, kind: "accent" },
+  { x: 0.8542, y: 0.2556, kind: "accent" },
+  { x: 0.3542, y: 0.2167, kind: "accent" },
+  { x: 0.3281, y: 0.2111, kind: "accent" },
+  { x: 0.3073, y: 0.1944, kind: "accent" },
+  { x: 0.2865, y: 0.1667, kind: "accent" },
+  { x: 0.2604, y: 0.1611, kind: "accent" },
+];
+
+const CINEMA_BULBS = CINEMA_LIGHTS.filter((l) => l.kind === "bulb");
+const CINEMA_NEONS = CINEMA_LIGHTS.filter((l) => l.kind === "neon");
+const CINEMA_ACCENTS = CINEMA_LIGHTS.filter((l) => l.kind === "accent");
+
 const BeaconLayer = React.memo(() => {
   const canvasRef = useRef(null);
   const { dimensions, viewRef, buildingMap, elevationMap } = useCityContext();
@@ -82,20 +168,54 @@ const BeaconLayer = React.memo(() => {
 
       const elapsed = (timestamp - startTime) / 1000;
 
-      // Collect unique skyscraper and radio tower origins
+      // Draw a single glowing light: wide bloom + core + bright center.
+      // Uses additive blending so multiple lights brighten each other.
+      const drawLight = (bx, by, color, intensity, radius) => {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = intensity * 0.45;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(bx, by, radius * 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = intensity;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(bx, by, radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.globalAlpha = intensity;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(bx, by, radius * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      };
+
+      // Cinema marquee chase: rolling wave of brightness through bulbs in
+      // click order. Period chosen to feel like a retro chase, not a strobe.
+      const CHASE_PERIOD = 1.6; // seconds for the wave to traverse all bulbs
+      const BULB_BASE = 0.4;    // baseline brightness so unlit bulbs still glow
+
+      // Neon gentle breathing pulse
+      const NEON_PULSE_PERIOD = 2.4;
+
+      // Accent slow shimmer
+      const ACCENT_PULSE_PERIOD = 3.2;
+
       const drawn = new Set();
       for (const [key, building] of bMap) {
-        if (building.type !== 'skyscraper' && building.type !== 'radio_tower' && building.type !== 'nyt_tower') continue;
+        const isTowerBlinker =
+          building.type === 'skyscraper' ||
+          building.type === 'radio_tower' ||
+          building.type === 'nyt_tower';
+        const isCinema = building.type === 'cinema';
+        if (!isTowerBlinker && !isCinema) continue;
+
         const originKey = `${building.originX},${building.originY}`;
         if (drawn.has(originKey)) continue;
         drawn.add(originKey);
-
-        const variant = building.variant ?? 0;
-        const positions =
-          building.type === 'radio_tower' ? RADIO_TOWER_BEACONS :
-          building.type === 'nyt_tower'   ? NYT_TOWER_BEACONS :
-          BEACON_POSITIONS[variant];
-        if (!positions) continue;
 
         const bType = buildingTypes[building.type];
         const [fw, fh] = bType.footprint;
@@ -107,10 +227,53 @@ const BeaconLayer = React.memo(() => {
         const yOffset = -elevation * elevationScale * zoom;
         const spriteW = bType.spriteWidth * zoom;
         const spriteH = bType.spriteHeight * zoom;
-
-        // Sprite draw origin (same as TerrainLayer)
         const drawX = screenX - spriteW / 2;
         const drawY = screenY + yOffset - spriteH + (tileHeight * zoom);
+
+        if (isCinema) {
+          // Neon STAR sign — all neon pixels pulse together
+          const neonI = 0.7 + 0.3 * Math.sin((elapsed / NEON_PULSE_PERIOD) * Math.PI * 2);
+          for (const pos of CINEMA_NEONS) {
+            drawLight(drawX + pos.x * spriteW, drawY + pos.y * spriteH, '#ff2a8e', neonI, 2.2 * zoom);
+          }
+
+          // Cyan accent trim — slow shimmer, slightly offset per-light for a
+          // gentle traveling effect along the roofline
+          const accentBase = 0.5 + 0.3 * Math.sin((elapsed / ACCENT_PULSE_PERIOD) * Math.PI * 2);
+          for (let i = 0; i < CINEMA_ACCENTS.length; i++) {
+            const pos = CINEMA_ACCENTS[i];
+            const offset = 0.15 * Math.sin(((elapsed + i * 0.18) / ACCENT_PULSE_PERIOD) * Math.PI * 2);
+            const ai = Math.max(0.2, accentBase + offset);
+            drawLight(drawX + pos.x * spriteW, drawY + pos.y * spriteH, '#4ad8ff', ai, 1.8 * zoom);
+          }
+
+          // Marquee bulb chase — rolling wave of bright bulbs around the perimeter
+          const N = CINEMA_BULBS.length;
+          if (N > 0) {
+            const head = (elapsed / CHASE_PERIOD) % 1; // 0..1 normalized position
+            for (let i = 0; i < N; i++) {
+              const phase = i / N;
+              let d = phase - head;
+              if (d < -0.5) d += 1;
+              if (d >  0.5) d -= 1;
+              // Trailing comet: bright at the head, fades behind
+              const trail = 0.18;
+              const t = d <= 0 && d > -trail ? 1 + d / trail : 0;
+              const intensity = Math.min(1, BULB_BASE + t * 0.7);
+              const pos = CINEMA_BULBS[i];
+              drawLight(drawX + pos.x * spriteW, drawY + pos.y * spriteH, '#ffd24a', intensity, 1.7 * zoom);
+            }
+          }
+          continue;
+        }
+
+        // Tower red aircraft-warning blink
+        const variant = building.variant ?? 0;
+        const positions =
+          building.type === 'radio_tower' ? RADIO_TOWER_BEACONS :
+          building.type === 'nyt_tower'   ? NYT_TOWER_BEACONS :
+          BEACON_POSITIONS[variant];
+        if (!positions) continue;
 
         // Phase offset so buildings don't blink in unison
         const phase = variant * 0.3;
