@@ -202,6 +202,8 @@ body {
   box-shadow: inset 1px 1px 0 #888;
   outline: none;
   margin: 8px 0 6px;
+  /* Let touch drags move the thumb instead of panning/scrolling the page */
+  touch-action: none;
 }
 
 .os9-slider::-webkit-slider-thumb {
@@ -224,6 +226,23 @@ body {
   border: 1px solid var(--os9-border);
   border-radius: 2px;
   cursor: pointer;
+}
+
+/* Touch devices: bigger track + thumb so the slider is easy to grab */
+@media (pointer: coarse) {
+  .os9-slider {
+    height: 6px;
+    margin: 14px 0 12px;
+  }
+  .os9-slider::-webkit-slider-thumb {
+    width: 22px;
+    height: 28px;
+    margin-top: -11px;
+  }
+  .os9-slider::-moz-range-thumb {
+    width: 22px;
+    height: 28px;
+  }
 }
 
 .os9-label {

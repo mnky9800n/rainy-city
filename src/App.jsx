@@ -95,7 +95,9 @@ const App = () => {
   const [destructionMode, setDestructionMode] = useState(false);
   const [placeBuildingsMode, setPlaceBuildingsMode] = useState(false);
   const [selectedBuildingType, setSelectedBuildingType] = useState("house");
-  const [controlPanelOpen, setControlPanelOpen] = useState(true);
+  const [controlPanelOpen, setControlPanelOpen] = useState(
+    () => typeof window === "undefined" || window.innerWidth > 768
+  );
   const resetRoadsRef = useRef(null);
 
   const playSounds = () => {
