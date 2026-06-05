@@ -99,6 +99,7 @@ const App = () => {
     () => typeof window === "undefined" || window.innerWidth > 768
   );
   const resetRoadsRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const playSounds = () => {
     rainRef.current.play();
@@ -139,7 +140,13 @@ const App = () => {
       />
       {showRain && <RainCanvas />}
 
-      <audio ref={rainRef} src="./rain.mp3" loop />
+      <audio
+        ref={rainRef}
+        src="./rain.mp3"
+        loop
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
+      />
       <audio ref={cityRef} src="./city.mp3" loop />
       <audio ref={thunderRef} src="./thunder.mp3" />
 
@@ -149,8 +156,18 @@ const App = () => {
           onClose={() => setControlPanelOpen(false)}
         >
           <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-            <button className="os9-button default" onClick={playSounds}>Play</button>
-            <button className="os9-button" onClick={pauseSounds}>Pause</button>
+            <button
+              className={"os9-button default" + (isPlaying ? " active" : "")}
+              onClick={playSounds}
+            >
+              Play
+            </button>
+            <button
+              className={"os9-button" + (!isPlaying ? " active" : "")}
+              onClick={pauseSounds}
+            >
+              Pause
+            </button>
           </div>
 
           <label className="os9-label">Rain Volume</label>

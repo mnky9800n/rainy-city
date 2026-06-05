@@ -3,16 +3,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Mac OS 9 fonts — Chicago for titles/menus, Geneva for body.
-   Sourced from sakofchit/system.css (a public Mac OS 9 CSS library). */
+/* Mac OS 9 fonts — Chicago for titles/menus, ChiKareGo2 (pixel) for body.
+   Self-hosted from src/fonts/ (originally from sakofchit/system.css) and
+   bundled by webpack, so they don't depend on an external CDN that can
+   move or remove files. */
 @font-face {
   font-family: "ChicagoFLF";
-  src: url("https://cdn.jsdelivr.net/gh/sakofchit/system.css@main/public/fonts/ChicagoFLF.woff") format("woff");
+  src: url("./fonts/ChicagoFLF.woff2") format("woff2"),
+       url("./fonts/ChicagoFLF.woff") format("woff");
   font-display: swap;
 }
 @font-face {
-  font-family: "Geneva9";
-  src: url("https://cdn.jsdelivr.net/gh/sakofchit/system.css@main/public/fonts/Geneva-9.woff") format("woff");
+  font-family: "ChiKareGo2";
+  src: url("./fonts/ChiKareGo2.woff2") format("woff2"),
+       url("./fonts/ChiKareGo2.woff") format("woff");
   font-display: swap;
 }
 
@@ -31,7 +35,7 @@ body {
   --os9-bevel-dark: #808080;
   --os9-text: #000000;
   --os9-font-title: "ChicagoFLF", "Chicago", "Geneva", "Tahoma", sans-serif;
-  --os9-font-body: "Geneva9", "Geneva", "Tahoma", "Arial", sans-serif;
+  --os9-font-body: "ChiKareGo2", "Geneva", "Tahoma", "Arial", sans-serif;
 }
 
 .os9-window {
@@ -39,7 +43,7 @@ body {
   border: 1px solid var(--os9-border);
   color: var(--os9-text);
   font-family: var(--os9-font-body);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.35;
   box-shadow:
     inset 1px 1px 0 var(--os9-bevel-light),
@@ -151,6 +155,15 @@ body {
   font-weight: bold;
 }
 
+/* Persistent pressed state — shows which of play/pause is currently in effect */
+.os9-button.active,
+.os9-button.active:hover {
+  background: linear-gradient(to bottom, #9a9a9a 0%, #b6b6b6 100%);
+  box-shadow:
+    inset 1px 1px 0 #707070,
+    inset -1px -1px 0 #ffffff;
+}
+
 /* ---------- Checkboxes ---------- */
 
 .os9-checkbox {
@@ -184,7 +197,7 @@ body {
   display: inline-flex;
   align-items: center;
   font-family: var(--os9-font-body);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--os9-text);
   cursor: pointer;
   margin-right: 8px;
@@ -247,7 +260,7 @@ body {
 
 .os9-label {
   font-family: var(--os9-font-body);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--os9-text);
   display: block;
   margin-top: 6px;
@@ -330,7 +343,7 @@ body {
   color: #0033cc;
   text-decoration: underline;
   font-family: var(--os9-font-body);
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
 }
 

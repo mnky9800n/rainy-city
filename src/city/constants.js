@@ -9,8 +9,8 @@ export const tileConfig = {
     texture: "./textures/grass.png"
   },
   building: {
-    color: "#7f8c8d",
-    texture: "./textures/building.png"
+    color: "#7f8c8d"
+    // No texture - buildings render via sprite sheets in buildings.js; tile falls back to color
   },
   road: {
     color: "#34495e",
@@ -25,8 +25,8 @@ export const tileConfig = {
     texture: "./textures/road_intersection.png"
   },
   marker: {
-    color: "#7f8c8d",
-    texture: "./textures/marker.png"
+    color: "#7f8c8d"
+    // No texture - marker tile falls back to color
   }
 };
 
