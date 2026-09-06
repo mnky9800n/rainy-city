@@ -150,7 +150,9 @@ const WhaleLayer = ({ onWhaleClick }) => {
     // Load whale GLB
     const loader = new GLTFLoader();
     loader.load(
-      "https://assets.codepen.io/10590426/Whale+Poly.glb",
+      // Self-hosted from public/models/. Was hotlinked from assets.codepen.io,
+      // which started 404ing and silently took the whales with it.
+      "./models/whale.glb",
       (gltf) => {
         if (!threeRef.current) return;
 
@@ -158,7 +160,10 @@ const WhaleLayer = ({ onWhaleClick }) => {
         gltf.scene.traverse((child) => {
           if (child.geometry) sourceGeometries.push(child.geometry.clone());
         });
-        if (sourceGeometries.length === 0) return;
+        if (sourceGeometries.length === 0) {
+          console.error("WhaleLayer: whale.glb loaded but contained no geometry.");
+          return;
+        }
 
         for (let i = 0; i < 5; i++) {
           const group = new THREE.Group();
@@ -210,6 +215,13 @@ const WhaleLayer = ({ onWhaleClick }) => {
         }
 
         state.loaded = true;
+      },
+      undefined,
+      (err) => {
+        console.error(
+          "WhaleLayer: failed to load ./models/whale.glb - whales will not render.",
+          err
+        );
       }
     );
 
