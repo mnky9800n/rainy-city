@@ -85,6 +85,10 @@ export const buildingTypes = {
     footprint: [4, 4],
     spriteWidth: 256,
     spriteHeight: 180,
+    // The plaza slab is 26.2px thick in the source art, which is 6.6px once
+    // sliced. Without this the slicer plants the slab's underside on the
+    // ground and the whole building floats by that much.
+    groundInset: 6.6,
     color: "#c9a97a",
     fullSpriteHitTest: true,
     popupContent: {

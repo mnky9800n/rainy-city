@@ -11,8 +11,8 @@ import DebugLayer from './layers/DebugLayer.jsx';
 import InfoPopup from './InfoPopup.jsx';
 import { buildingTypes } from './buildings.js';
 import { getOffsets, screenToTile } from './isometric.js';
-import { toScreenCoords } from './rendering.js';
-import { gridWidth, gridHeight, tileHeight, elevationScale } from './constants.js';
+import { toScreenCoords, getBuildingSpriteRect } from './rendering.js';
+import { gridWidth, gridHeight } from './constants.js';
 
 const ZoomContainer = ({ children, onClick }) => {
   const containerRef = useRef(null);
@@ -247,11 +247,8 @@ const CityInner = ({ showSeafloor, showWaterSurface, showTerrain, showRoads, sho
       const sy = entry.originY + fh - 1;
       const { screenX, screenY } = toScreenCoords(sx, sy, zoom, offsetX, offsetY);
       const elev = elevationMap[sy]?.[sx] ?? 0;
-      const yOff = -elev * elevationScale * zoom;
-      const spriteW = bType.spriteWidth * zoom;
-      const spriteH = bType.spriteHeight * zoom;
-      const drawX = screenX - spriteW / 2;
-      const drawY = screenY + yOff - spriteH + (tileHeight * zoom);
+      const { drawX, drawY, spriteW, spriteH } =
+        getBuildingSpriteRect(bType, screenX, screenY, elev, zoom);
       if (
         e.clientX >= drawX && e.clientX <= drawX + spriteW &&
         e.clientY >= drawY && e.clientY <= drawY + spriteH

@@ -57,6 +57,29 @@ and **bottom-aligns** it:
 
 Move the accepted PNG to `public/textures/buildings/<key>.png`.
 
+### 1b. Give it a glow map, if it has lit windows
+
+```bash
+./make-glow-map public/textures/buildings/<key>.png \
+    public/textures/buildings/<key>_glow.png <spriteWidth> <spriteHeight>
+```
+
+This finds the pixels that read as lit glass, blurs them into a bloom, and
+writes it in the layout the sprite ends up in after slicing, so `BeaconLayer`
+can draw it straight into the sprite's rect. Register it in `GLOW_MAPS` in
+`BeaconLayer.jsx`.
+
+**Regenerate the glow map whenever you regenerate the sprite.** It is derived
+from the sprite's pixels; if the two drift apart the glow lands on the wrong
+windows.
+
+Check the output before trusting it. The detection separates lit glass from
+warm-but-unlit material on three bounds, and a different building may need them
+retuned — sunlit timber slats in particular are as bright as glass and are only
+separable on the blue channel. Small point lights like lamp globes are better
+handled as entries in a positions array drawn with `drawLight`, not baked into
+the bloom, so they can flicker independently.
+
 ### 2. Register the type — `src/city/buildings.js`
 
 ```js
@@ -67,6 +90,7 @@ Move the accepted PNG to `public/textures/buildings/<key>.png`.
   spriteHeight: <px>,       // footprint height x 32, plus the building's height
   color: "#rrggbb",         // procedural placeholder fill
   fullSpriteHitTest: true,  // click anywhere on the sprite, not just its tiles
+  groundInset: 0,           // see below; only needed if the art has a ground slab
   popupContent: { title, description, linkUrl, linkText },
 },
 ```
@@ -76,6 +100,15 @@ isometric, so the sprite must be 256 wide or the building won't line up with its
 tiles. Keep `spriteHeight` close to the sprite's actual content height —
 `fullSpriteHitTest` makes the whole rectangle clickable, so slack becomes dead
 clickable space above the roof.
+
+`groundInset` fixes buildings that float. The slicer bottom-aligns on the
+lowest opaque pixel, which is correct when the art ends at the building's base.
+Art that includes a ground slab has thickness *below* the walkable surface, so
+bottom-aligning plants the slab's underside on the ground and lifts everything
+by that thickness. Measure it: a true 2:1 isometric diamond of width `W` has
+half-height `W/4`, so compare where the slab's side corners sit against where
+its south corner actually is, and convert the difference to sprite pixels. The
+library's plaza is 26.2 source px thick, which is 6.6 sprite px.
 
 `popupContent` is the **single source of truth** for the name and description.
 Do not retype either anywhere else; the Buildings explorer derives them.

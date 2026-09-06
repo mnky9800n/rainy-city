@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { useCityContext } from '../CityContext.jsx';
 import { getOffsets } from '../isometric.js';
-import { toScreenCoords } from '../rendering.js';
+import { toScreenCoords, getBuildingSpriteRect } from '../rendering.js';
 import { tileWidth, tileHeight, elevationScale } from '../constants.js';
 import { buildingTypes } from '../buildings.js';
 
@@ -466,16 +466,15 @@ const CarLayer = React.memo(() => {
           if (!sprite) continue;
 
           const { screenX, screenY } = toScreenCoords(tile.x, tile.y, zoom, offsetX, offsetY);
-          const yOffset = -tile.elevation * elevationScale * zoom;
-          const spriteW = bType.spriteWidth * zoom;
-          const spriteH = bType.spriteHeight * zoom;
+          const { drawX, drawY, spriteW, spriteH } =
+            getBuildingSpriteRect(bType, screenX, screenY, tile.elevation, zoom);
 
           buildingDrawList.push({
             type: 'building',
             depth: tile.x + tile.y,
             sprite,
-            drawX: screenX - spriteW / 2,
-            drawY: screenY + yOffset - spriteH + (tileHeight * zoom),
+            drawX,
+            drawY,
             spriteW,
             spriteH,
           });

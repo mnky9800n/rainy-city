@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+"""
+make-glow-map — build an emissive glow map for a landmark sprite.
+
+Reads a landmark sprite, finds the pixels that read as lit windows (warm and
+bright, as distinct from timber cladding, wood benches or pale concrete),
+blurs them into a soft bloom, and writes a PNG that BeaconLayer composites
+back over the building with 'lighter' blending.
+
+The output is written in the SAME layout the sprite ends up in after
+loadAndSliceSpritesheet() crops to the alpha bounding box, scales to fit and
+bottom-aligns -- so the glow lines up with the building with no extra
+bookkeeping. That is why the sprite's target width/height must be passed in:
+they have to match the buildingTypes entry.
+
+    ./make-glow-map public/textures/buildings/library.png \
+        public/textures/buildings/library_glow.png 256 180
+
+See CLAUDE.md, "Adding a landmark building".
+"""
+import sys, zlib, struct
+
+def decode(path):
+    d = open(path, "rb").read()
+    assert d[:8] == b"\x89PNG\r\n\x1a\n", "not a PNG"
+    off, idat = 8, b""
+    while off < len(d):
+        ln, typ = struct.unpack_from(">I4s", d, off); off += 8
+        chunk = d[off:off+ln]; off += ln + 4
+        if typ == b"IHDR":
+            w, h, bd, ct = struct.unpack_from(">IIBB", chunk, 0)
+            assert bd == 8 and ct in (2, 6), "need 8-bit RGB or RGBA"
+        elif typ == b"IDAT": idat += chunk
+        elif typ == b"IEND": break
+    n = 4 if ct == 6 else 3
+    raw = zlib.decompress(idat); stride = w * n
+    out = bytearray(w * h * 4); prev = bytearray(stride); p = 0
+    for y in range(h):
+        f = raw[p]; p += 1
+        line = bytearray(raw[p:p+stride]); p += stride
+        for i in range(stride):
+            a = line[i-n] if i >= n else 0
+            b = prev[i]
+            c = prev[i-n] if i >= n else 0
+            v = line[i]
+            if f == 1: v += a
+            elif f == 2: v += b
+            elif f == 3: v += (a + b) // 2
+            elif f == 4:
+                pa, pb, pc = abs(b-c), abs(a-c), abs(a+b-2*c)
+                v += a if pa <= pb and pa <= pc else (b if pb <= pc else c)
+            line[i] = v & 255
+        if n == 4:
+            out[y*w*4:(y+1)*w*4] = line
+        else:
+            for x in range(w):
+                o = (y*w+x)*4; out[o:o+3] = line[x*3:x*3+3]; out[o+3] = 255
+        prev = line
+    return w, h, out
+
+def encode(path, w, h, px):
+    raw = b"".join(b"\x00" + bytes(px[y*w*4:(y+1)*w*4]) for y in range(h))
+    def chunk(t, d):
+        c = t + d
+        return struct.pack(">I", len(d)) + c + struct.pack(">I", zlib.crc32(c) & 0xffffffff)
+    open(path, "wb").write(
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(bytes(raw), 9))
+        + chunk(b"IEND", b""))
+
+def box_blur(buf, w, h, r):
+    """Separable box blur over a single-channel float buffer."""
+    tmp = [0.0] * (w * h)
+    for y in range(h):
+        row = y * w; acc = 0.0
+        for x in range(-r, w):
+            if x + r < w: acc += buf[row + x + r]
+            if x - r - 1 >= 0: acc -= buf[row + x - r - 1]
+            if x >= 0: tmp[row + x] = acc / (2 * r + 1)
+    out = [0.0] * (w * h)
+    for x in range(w):
+        acc = 0.0
+        for y in range(-r, h):
+            if y + r < h: acc += tmp[(y + r) * w + x]
+            if y - r - 1 >= 0: acc -= tmp[(y - r - 1) * w + x]
+            if y >= 0: out[y * w + x] = acc / (2 * r + 1)
+    return out
+
+def main():
+    if len(sys.argv) < 5:
+        print(__doc__); sys.exit(1)
+    src, dst = sys.argv[1], sys.argv[2]
+    target_w, target_h = int(sys.argv[3]), int(sys.argv[4])
+    SS = 2                       # render the glow at 2x the sprite for a soft edge
+    ALPHA_T = 10                 # must match loadAndSliceSpritesheet
+
+    w, h, px = decode(src)
+
+    # A pixel reads as a lit window if it is bright, warm, and not too
+    # saturated. Each bound earns its place:
+    #   r > 185, g > 145  reject dark timber cladding and bench slats
+    #   b > 88            rejects the *sunlit* timber slats, which are as bright
+    #                     as glass but far more saturated (blue ~50 vs ~110)
+    #   r - b > 55        rejects pale concrete paving and the cool skylight
+    mask = bytearray(w * h)
+    for y in range(h):
+        ro = y * w * 4
+        for x in range(w):
+            o = ro + x * 4
+            r, g, b, a = px[o], px[o+1], px[o+2], px[o+3]
+            if a > 200 and r > 185 and g > 145 and b > 88 and r - b > 55:
+                mask[y * w + x] = 1
+
+    # Drop speckle: paving highlights and stray warm pixels are isolated, real
+    # windows sit in dense blocks.
+    dense = bytearray(w * h)
+    R = 4
+    for y in range(R, h - R):
+        for x in range(R, w - R):
+            if not mask[y * w + x]: continue
+            c = 0
+            for dy in range(-R, R + 1):
+                base = (y + dy) * w + x
+                for dx in range(-R, R + 1):
+                    c += mask[base + dx]
+            if c >= 28: dense[y * w + x] = 1
+
+    # Keep only sizeable runs of lit pixels. Speckle removal above thins the
+    # plaza highlights but leaves small islands; a real window wall is one big
+    # connected region, a wet paving stone is not.
+    MIN_AREA = 100
+    seen = bytearray(w * h)
+    kept = bytearray(w * h)
+    for sy0 in range(h):
+        for sx0 in range(w):
+            i0 = sy0 * w + sx0
+            if not dense[i0] or seen[i0]: continue
+            stack = [i0]; seen[i0] = 1; comp = []
+            while stack:
+                i = stack.pop(); comp.append(i)
+                cy, cx = divmod(i, w)
+                for ny, nx in ((cy-1,cx),(cy+1,cx),(cy,cx-1),(cy,cx+1)):
+                    if 0 <= ny < h and 0 <= nx < w:
+                        j = ny * w + nx
+                        if dense[j] and not seen[j]:
+                            seen[j] = 1; stack.append(j)
+            if len(comp) >= MIN_AREA:
+                for i in comp: kept[i] = 1
+    dropped = sum(dense) - sum(kept)
+    print(f"  lit pixels: {sum(dense)} kept, {dropped} dropped as islands")
+    dense = kept
+
+    # Reproduce the slicer's transform so the glow lands on the building.
+    cols = [x for x in range(w) if any(px[(y*w+x)*4+3] > ALPHA_T for y in range(h))]
+    rows = [y for y in range(h) if any(px[(y*w+x)*4+3] > ALPHA_T for x in range(w))]
+    x0, x1, y0, y1 = cols[0], cols[-1], rows[0], rows[-1]
+    cw, ch = x1 - x0 + 1, y1 - y0 + 1
+    scale = min(target_w / cw, target_h / ch)
+    ow, oh = target_w * SS, target_h * SS
+    dest_x = (target_w - cw * scale) / 2 * SS
+    dest_y = (target_h - ch * scale) * SS
+    step = 1.0 / (scale * SS)
+
+    inten = [0.0] * (ow * oh)
+    for oy in range(oh):
+        sy = y0 + (oy - dest_y) * step
+        if sy < y0 or sy > y1: continue
+        for ox in range(ow):
+            sx = x0 + (ox - dest_x) * step
+            if sx < x0 or sx > x1: continue
+            # area-average the mask over the source footprint of this output pixel
+            acc = n = 0
+            for dy in range(int(step) + 1):
+                yy = int(sy) + dy
+                if yy > y1: break
+                for dx in range(int(step) + 1):
+                    xx = int(sx) + dx
+                    if xx > x1: break
+                    acc += dense[yy * w + xx]; n += 1
+            if n: inten[oy * ow + ox] = acc / n
+
+    for radius in (3, 5, 9):     # stacked box blurs approximate a gaussian bloom
+        inten = box_blur(inten, ow, oh, radius)
+
+    peak = max(inten) or 1.0
+    GLOW = (255, 206, 130)       # warm interior light
+    out = bytearray(ow * oh * 4)
+    for i, v in enumerate(inten):
+        # Box blurs can leave tiny negatives from float accumulation; clamp
+        # before the exponent, which would otherwise go complex.
+        a = min(1.0, max(0.0, v / peak) ** 0.75)   # lift the falloff so the bloom spreads
+        if a < 0.004: continue
+        o = i * 4
+        out[o], out[o+1], out[o+2] = GLOW
+        out[o+3] = int(a * 255)
+
+    encode(dst, ow, oh, out)
+    lit = sum(1 for v in out[3::4] if v > 0)
+    print(f"wrote {dst}  {ow}x{oh}  ({100*lit/(ow*oh):.1f}% of the map glows)")
+
+main()

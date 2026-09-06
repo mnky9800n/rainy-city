@@ -155,3 +155,29 @@ export function drawTile(ctx, x, y, elevation, type, corners, zoom, textures) {
 
   ctx.restore();
 }
+
+// Where a building's sprite lands on screen.
+//
+// loadAndSliceSpritesheet bottom-aligns sprites, so the bottom edge of the
+// sprite sits on the south corner of the footprint. That is right for a
+// building drawn with no ground under it, but art that includes a ground slab
+// (the library's plaza) has thickness below the walkable surface -- planting
+// the underside on the ground leaves the building floating by exactly that
+// thickness. `groundInset` is how many sprite pixels hang below the ground
+// plane, and pushes the sprite back down by that much.
+//
+// Drawing, lighting and hit-testing all go through here. They used to carry
+// three copies of this arithmetic, and if they drift apart you get buildings
+// you cannot click where you can see them.
+export function getBuildingSpriteRect(bType, screenX, screenY, elevation, zoom) {
+  const spriteW = bType.spriteWidth * zoom;
+  const spriteH = bType.spriteHeight * zoom;
+  const yOffset = -elevation * elevationScale * zoom;
+  const inset = (bType.groundInset ?? 0) * zoom;
+  return {
+    spriteW,
+    spriteH,
+    drawX: screenX - spriteW / 2,
+    drawY: screenY + yOffset - spriteH + tileHeight * zoom + inset,
+  };
+}
