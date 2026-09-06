@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+#
+# create-sprite — generate a landmark sprite for Rainy City.
+#
+# Wraps ./create with the conventions every building sprite has to follow, so
+# they don't have to be remembered (or forgotten) each time:
+#
+#   * transparent background — the renderer composites sprites over terrain,
+#     and loadAndSliceSpritesheet() finds the building by its alpha bounding box
+#   * png output, 1024x1024, high quality
+#   * the isometric angle, style and framing rules the other landmarks use
+#
+# Usage:
+#   ./create-sprite "a corner bakery with a striped awning and a bread sign"
+#
+# The subject is all you pass; the style and composition boilerplate is appended
+# for you. Output lands in the repo root as YYYYMMDD-HHMMSS-out.png (gitignored).
+#
+# See CLAUDE.md, "Adding a landmark building", for what to do with the result.
+set -euo pipefail
+
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+OPENAI_KEY=$(cat "$(dirname "$0")/openaikey")
+
+if [ -z "${1:-}" ]; then
+  echo "Usage: ./create-sprite <subject>" >&2
+  exit 1
+fi
+
+STYLE="Isometric video game sprite, viewed from the standard south-east 30-degree \
+isometric angle, in the same clean style as a SimCity 2000 or Cities: Skylines \
+building sprite. Sharp well-defined edges, muted overcast rainy-day colours. \
+Single subject centred in frame. Fully transparent background. No drop shadow \
+cast outside the building's own base, no ground plane or terrain beyond it, no \
+text, no lettering, no signage, no watermark, no border, no frame."
+
+PROMPT="$1 $STYLE"
+
+RESPONSE=$(curl -s \
+  -X POST "https://api.openai.com/v1/images/generations" \
+  -H "Authorization: Bearer ${OPENAI_KEY}" \
+  -H "Content-type: application/json" \
+  -d "$(jq -n --arg p "$PROMPT" '{
+        model: "gpt-image-1.5",
+        prompt: $p,
+        size: "1024x1024",
+        quality: "high",
+        background: "transparent",
+        output_format: "png"
+      }')")
+
+B64=$(echo "$RESPONSE" | jq -r '.data[0].b64_json // empty')
+
+if [ -z "$B64" ]; then
+  echo "API error:" >&2
+  echo "$RESPONSE" | jq . 2>/dev/null || echo "$RESPONSE" >&2
+  exit 1
+fi
+
+echo "$B64" | base64 --decode > "${TIMESTAMP}-out.png"
+echo "Saved ${TIMESTAMP}-out.png"
