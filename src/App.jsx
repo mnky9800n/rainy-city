@@ -1,83 +1,11 @@
 import React, { useRef, useState, useCallback } from "react";
 import RainCanvas from "./RainCanvas";
 import CityRenderer from "./city/CityRenderer";
+import DraggableWindow from "./ui/DraggableWindow.jsx";
+import ExplorerWindow from "./ui/ExplorerWindow.jsx";
+import { buildingCatalog } from "./data/buildingCatalog.js";
+import { characterCatalog } from "./data/characterCatalog.js";
 
-
-const DraggableWindow = ({ title = "Rainy City", children, initialPosition = { x: 100, y: 100 }, onClose }) => {
-  const [position, setPosition] = useState(initialPosition);
-  const [dragging, setDragging] = useState(false);
-  const [rel, setRel] = useState({ x: 0, y: 0 });
-
-  const onStart = (clientX, clientY) => {
-    setDragging(true);
-    setRel({ x: clientX - position.x, y: clientY - position.y });
-  };
-
-  const onMouseDown = (e) => { onStart(e.clientX, e.clientY); e.preventDefault(); };
-  const onTouchStart = (e) => { onStart(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); };
-
-  const onMouseUp = () => setDragging(false);
-
-  const onMouseMove = (e) => {
-    if (!dragging) return;
-    setPosition({ x: e.clientX - rel.x, y: e.clientY - rel.y });
-  };
-
-  const onTouchMove = (e) => {
-    if (!dragging) return;
-    setPosition({ x: e.touches[0].clientX - rel.x, y: e.touches[0].clientY - rel.y });
-  };
-
-  React.useEffect(() => {
-    if (dragging) {
-      window.addEventListener("mousemove", onMouseMove);
-      window.addEventListener("mouseup", onMouseUp);
-      window.addEventListener("touchmove", onTouchMove, { passive: false });
-      window.addEventListener("touchend", onMouseUp);
-    } else {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", onMouseUp);
-    }
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", onMouseUp);
-    };
-  });
-
-  return (
-    <div
-      className="os9-window"
-      style={{
-        position: "fixed",
-        left: position.x,
-        top: position.y,
-        zIndex: 9999,
-        minWidth: 280,
-      }}
-    >
-      <div
-        className="os9-titlebar"
-        onMouseDown={onMouseDown}
-        onTouchStart={onTouchStart}
-      >
-        {onClose && (
-          <button
-            className="os9-close-box"
-            onClick={onClose}
-            onMouseDown={(e) => e.stopPropagation()}
-            aria-label="Close"
-          />
-        )}
-        <span className="os9-title-text">{title}</span>
-      </div>
-      <div className="os9-content">{children}</div>
-    </div>
-  );
-};
 
 const App = () => {
   const rainRef = useRef(null);
@@ -98,6 +26,8 @@ const App = () => {
   const [controlPanelOpen, setControlPanelOpen] = useState(
     () => typeof window === "undefined" || window.innerWidth > 768
   );
+  const [buildingsOpen, setBuildingsOpen] = useState(false);
+  const [charactersOpen, setCharactersOpen] = useState(false);
   const resetRoadsRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
 
@@ -150,7 +80,7 @@ const App = () => {
       <audio ref={cityRef} src="./city.mp3" loop />
       <audio ref={thunderRef} src="./thunder.mp3" />
 
-      {controlPanelOpen ? (
+      {controlPanelOpen && (
         <DraggableWindow
           title="Control Panel"
           onClose={() => setControlPanelOpen(false)}
@@ -296,17 +226,60 @@ const App = () => {
             </a>
           </div>
         </DraggableWindow>
-      ) : (
-        <div
-          className="os9-desktop-icon"
-          onClick={() => setControlPanelOpen(true)}
-          style={{ top: 20, right: 20, zIndex: 9999 }}
-          title="Open Control Panel"
-        >
-          <div className="icon-glyph">⚙</div>
-          <div>Control<br />Panel</div>
-        </div>
       )}
+
+      {buildingsOpen && (
+        <ExplorerWindow
+          title="Buildings"
+          entries={buildingCatalog}
+          initialPosition={{ x: 150, y: 90 }}
+          onClose={() => setBuildingsOpen(false)}
+        />
+      )}
+
+      {charactersOpen && (
+        <ExplorerWindow
+          title="Characters"
+          entries={characterCatalog}
+          initialPosition={{ x: 210, y: 130 }}
+          onClose={() => setCharactersOpen(false)}
+        />
+      )}
+
+      {/* Each icon hides while its window is open, so the column never grows
+          past the three things you can actually open. */}
+      <div className="os9-desktop-icons">
+        {!controlPanelOpen && (
+          <div
+            className="os9-desktop-icon"
+            onClick={() => setControlPanelOpen(true)}
+            title="Open Control Panel"
+          >
+            <div className="icon-glyph">⚙</div>
+            <div>Control<br />Panel</div>
+          </div>
+        )}
+        {!buildingsOpen && (
+          <div
+            className="os9-desktop-icon"
+            onClick={() => setBuildingsOpen(true)}
+            title="Open Buildings"
+          >
+            <div className="icon-glyph">▤</div>
+            <div>Buildings</div>
+          </div>
+        )}
+        {!charactersOpen && (
+          <div
+            className="os9-desktop-icon"
+            onClick={() => setCharactersOpen(true)}
+            title="Open Characters"
+          >
+            <div className="icon-glyph">☺</div>
+            <div>Characters</div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

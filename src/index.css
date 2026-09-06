@@ -353,8 +353,21 @@ body {
 
 /* ---------- Desktop "Control Panels" icon (closed-window reopen) ---------- */
 
-.os9-desktop-icon {
+.os9-desktop-icons {
   position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.os9-desktop-icon {
+  /* The .os9-desktop-icons column places these; they used to place themselves. */
+  position: static;
+  width: 68px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -385,4 +398,219 @@ body {
 
 .os9-desktop-icon:hover .icon-glyph {
   background: linear-gradient(to bottom, #ffffff, #c8c8c8);
+}
+
+@media (max-width: 768px) {
+  .os9-desktop-icons {
+    top: 12px;
+    right: 12px;
+    gap: 10px;
+  }
+}
+
+/* ---------- Finder-style scrolling list ---------- */
+
+/* Sunken well: the window bevel run backwards, dark top-left, light bottom-right. */
+.os9-scroll-area {
+  background: var(--os9-bg-light);
+  border: 1px solid var(--os9-border);
+  box-shadow:
+    inset 1px 1px 0 var(--os9-bevel-dark),
+    inset -1px -1px 0 var(--os9-bevel-light);
+  padding: 4px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  /* Don't hand the scroll off to the city once the list bottoms out. */
+  overscroll-behavior: contain;
+  /* A finger in the list scrolls the list; the titlebar is what drags. */
+  touch-action: pan-y;
+  /* Firefox can't draw arrow boxes, so it gets a plain bar in the right greys. */
+  scrollbar-color: #c8c8c8 var(--os9-bg-light);
+}
+
+/* Everything below is WebKit/Blink only -- it's the only way to get the
+   OS 9 arrow boxes and striped trough. Firefox falls back to scrollbar-color
+   above, which looks plain but works. */
+.os9-scroll-area::-webkit-scrollbar {
+  width: 15px;
+}
+
+.os9-scroll-area::-webkit-scrollbar-track {
+  background-color: var(--os9-bg-light);
+  background-image: repeating-linear-gradient(
+    45deg,
+    #dcdcdc 0 1px,
+    #f2f2f2 1px 3px
+  );
+  border-left: 1px solid var(--os9-border);
+}
+
+.os9-scroll-area::-webkit-scrollbar-thumb {
+  background: linear-gradient(to right, #ffffff 0%, #e0e0e0 45%, #b4b4b4 100%);
+  border: 1px solid var(--os9-border);
+  box-shadow:
+    inset 1px 1px 0 var(--os9-bevel-light),
+    inset -1px -1px 0 var(--os9-bevel-dark);
+}
+
+.os9-scroll-area::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(to right, #c0c0c0, #9a9a9a);
+  box-shadow:
+    inset 1px 1px 0 #707070,
+    inset -1px -1px 0 var(--os9-bevel-light);
+}
+
+.os9-scroll-area::-webkit-scrollbar-button:single-button {
+  display: block;
+  height: 15px;
+  background-color: #e0e0e0;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: 1px solid var(--os9-border);
+  box-shadow:
+    inset 1px 1px 0 var(--os9-bevel-light),
+    inset -1px -1px 0 var(--os9-bevel-dark);
+}
+
+.os9-scroll-area::-webkit-scrollbar-button:single-button:vertical:decrement {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M4.5 0 9 6H0z' fill='%23000'/%3E%3C/svg%3E");
+}
+
+.os9-scroll-area::-webkit-scrollbar-button:single-button:vertical:increment {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0h9L4.5 6z' fill='%23000'/%3E%3C/svg%3E");
+}
+
+.os9-scroll-area::-webkit-scrollbar-button:single-button:active {
+  background-color: #a8a8a8;
+  box-shadow:
+    inset 1px 1px 0 #707070,
+    inset -1px -1px 0 var(--os9-bevel-light);
+}
+
+.os9-scroll-area::-webkit-scrollbar-corner {
+  background: var(--os9-bg-light);
+}
+
+@media (pointer: coarse) {
+  .os9-scroll-area::-webkit-scrollbar {
+    width: 12px;
+  }
+  .os9-scroll-area::-webkit-scrollbar-button:single-button {
+    height: 12px;
+  }
+}
+
+/* ---------- Catalog rows ---------- */
+
+.os9-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.os9-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 7px;
+  background: var(--os9-bg);
+  border: 1px solid var(--os9-border);
+  box-shadow:
+    inset 1px 1px 0 var(--os9-bevel-light),
+    inset -1px -1px 0 var(--os9-bevel-dark);
+}
+
+.os9-row:hover {
+  background: var(--os9-bg-light);
+}
+
+/* Sunken picture frame, so the thumbnail reads as inset into the row. */
+.os9-row-thumb {
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #38424f;
+  border: 1px solid var(--os9-border);
+  box-shadow:
+    inset 1px 1px 0 var(--os9-bevel-dark),
+    inset -1px -1px 0 var(--os9-bevel-light);
+}
+
+.os9-row-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Photographs fill the frame; object-position per entry decides the crop. */
+  object-fit: cover;
+  object-position: 50% 50%;
+}
+
+/* Building sprites are whole transparent PNGs -- show all of it, sitting on
+   the floor of the frame rather than floating in the middle. */
+.os9-row-thumb img.contain {
+  object-fit: contain;
+  object-position: 50% 100%;
+}
+
+.os9-row-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.os9-row-title {
+  font-family: var(--os9-font-title);
+  font-size: 12px;
+  color: var(--os9-text);
+  margin-bottom: 4px;
+}
+
+.os9-row-desc {
+  font-family: var(--os9-font-body);
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--os9-text);
+  /* .os9-window turns selection off wholesale; catalog text is worth copying. */
+  user-select: text;
+}
+
+.os9-row-desc.clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.os9-row-more {
+  display: inline-block;
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 3px;
+  font-size: 13px;
+}
+
+.os9-row-links {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.os9-row-links .os9-link {
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .os9-row-thumb {
+    width: 52px;
+    height: 52px;
+  }
+  .os9-row-desc,
+  .os9-row-more,
+  .os9-row-links .os9-link {
+    font-size: 12px;
+  }
 }
