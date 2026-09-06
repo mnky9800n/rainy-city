@@ -145,6 +145,26 @@ already downloaded.
 
 ### 7. Verify before you call it done
 
+Look at it in a browser. `./shoot` drives headless Chrome over the DevTools
+Protocol and screenshots the result:
+
+```bash
+npm start
+./shoot http://localhost:3000 -o /tmp/city.png
+./shoot http://localhost:3000 -o /tmp/x.png -e /tmp/interact.js   # click, zoom, measure
+```
+
+The `-e` script runs in the page and its return value is printed, so it can
+open a window, wheel-zoom, scroll a list, or read back computed styles. Page
+console errors are always printed -- worth reading even when the screenshot
+looks right, since this project's worst bugs have all been silent ones.
+
+Reasoning about CSS is not verification. A scrollbar that had been styled for
+weeks turned out to be taking zero layout width, and only a measurement in a
+real browser caught it.
+
+Then check:
+
 - It appears on load, on its tiles, with the plaza or base aligned.
 - Debug Tools → Place Buildings draws it **every** time, not intermittently.
   Intermittent means the variant bug is back (see below).

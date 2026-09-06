@@ -1,0 +1,175 @@
+#!/usr/bin/env node
+//
+// shoot — drive the app in a real browser and take a picture of it.
+//
+// Talks to headless Chrome over the DevTools Protocol: the same remote-control
+// API that DevTools itself uses, and that Puppeteer and Playwright are built
+// on. No npm packages -- Node 22+ ships a global WebSocket, which is the only
+// dependency this would otherwise need.
+//
+// Usage:
+//   ./shoot <url> [-o out.png] [-w waitMs] [-e script.js] [-s 1400x950]
+//
+//   ./shoot http://localhost:3000 -o city.png
+//   ./shoot http://localhost:3000 -o explorer.png -e /tmp/open-buildings.js
+//
+// The -e script runs inside the page before the screenshot and its return
+// value is printed. That is the useful half: it can click things, dispatch
+// wheel events to zoom, scroll a list, or measure the DOM and hand back
+// numbers. A returned promise is awaited, so the script can do its own timing.
+//
+// Page console errors and warnings are always printed. This project has been
+// bitten twice by assets that failed silently, so an empty console is itself
+// a result worth seeing.
+//
+// Chrome is found via $CHROME, or the usual install locations.
+//
+// Two things it does not do. Input is synthetic DOM events, which exercise the
+// app's own handlers but not Chrome's hit-testing -- an invisible overlay
+// swallowing clicks would go unnoticed; use Input.dispatchMouseEvent if you
+// need that. And it waits on fixed timeouts rather than network idle, which is
+// what -w is for.
+
+const { spawn } = require("child_process");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+
+const CANDIDATES = [
+  process.env.CHROME,
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  "/usr/bin/google-chrome",
+  "/usr/bin/chromium",
+].filter(Boolean);
+
+const CHROME = CANDIDATES.find((p) => { try { fs.accessSync(p, fs.constants.X_OK); return true; } catch { return false; } });
+if (!CHROME) {
+  console.error("Could not find Chrome. Set $CHROME to its binary, e.g.\n" +
+    '  CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ./shoot ...');
+  process.exit(1);
+}
+
+const argv = process.argv.slice(2);
+const url = argv.find((a) => !a.startsWith("-") && argv[argv.indexOf(a) - 1]?.startsWith("-") !== true);
+const flag = (...names) => {
+  for (const n of names) {
+    const i = argv.indexOf(n);
+    if (i !== -1 && argv[i + 1]) return argv[i + 1];
+  }
+  return null;
+};
+if (!url) {
+  console.error("Usage: ./shoot <url> [-o out.png] [-w waitMs] [-e script.js] [-s WxH]");
+  process.exit(1);
+}
+const out = flag("-o", "--out") || "shot.png";
+const waitMs = Number(flag("-w", "--wait") || 8000);
+const evalFile = flag("-e", "--eval");
+const size = flag("-s", "--size") || "1400x950";
+
+const profile = fs.mkdtempSync(path.join(os.tmpdir(), "shoot-"));
+const port = 9333 + (process.pid % 500);
+
+const chrome = spawn(CHROME, [
+  "--headless=new",
+  `--remote-debugging-port=${port}`,
+  `--window-size=${size.replace("x", ",")}`,
+  "--no-first-run",
+  "--no-default-browser-check",
+  `--user-data-dir=${profile}`,
+  // Software GL, so the three.js whale layer still gets a context in headless.
+  "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
+  "about:blank",
+], { stdio: ["ignore", "ignore", "pipe"] });
+
+let chromeErr = "";
+chrome.stderr.on("data", (d) => { chromeErr += d; });
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const cleanup = () => {
+  chrome.kill();
+  try { fs.rmSync(profile, { recursive: true, force: true }); } catch {}
+};
+
+async function main() {
+  let target = null;
+  for (let i = 0; i < 80 && !target; i++) {
+    await sleep(250);
+    try {
+      const list = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+      target = list.find((t) => t.type === "page");
+    } catch {}
+  }
+  if (!target) throw new Error("Chrome never came up.\n" + chromeErr.slice(0, 800));
+
+  const ws = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((res, rej) => { ws.onopen = res; ws.onerror = rej; });
+
+  let id = 0;
+  const pending = new Map();
+  const events = [];
+  ws.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+    else if (m.method) events.push(m);
+  };
+  const send = (method, params = {}) =>
+    new Promise((res) => { const my = ++id; pending.set(my, res); ws.send(JSON.stringify({ id: my, method, params })); });
+
+  await send("Page.enable");
+  await send("Runtime.enable");
+  await send("Console.enable");
+  await send("Page.navigate", { url });
+  await sleep(waitMs);
+
+  if (evalFile) {
+    const r = await send("Runtime.evaluate", {
+      expression: fs.readFileSync(evalFile, "utf8"),
+      awaitPromise: true, returnByValue: true,
+    });
+    if (r.result?.exceptionDetails) {
+      console.error("PAGE ERROR:", r.result.exceptionDetails.exception?.description
+        || JSON.stringify(r.result.exceptionDetails));
+    } else if (r.result?.result?.value !== undefined) {
+      console.log("eval:", JSON.stringify(r.result.result.value));
+    }
+    await sleep(1200);
+  }
+
+  // Headless paints web-font text once and does not reliably repaint it after
+  // the font swaps in, so labels can be missing from a capture while being
+  // perfectly present in the DOM. Wait for the fonts, then dirty the layer.
+  await send("Runtime.evaluate", {
+    expression: `document.fonts.ready.then(() => {
+      document.body.style.transform = 'translateZ(0)';
+      void document.body.offsetHeight;
+      document.body.style.transform = '';
+      void document.body.offsetHeight;
+    })`,
+    awaitPromise: true,
+  });
+  await sleep(900);
+
+  const shot = await send("Page.captureScreenshot", { format: "png" });
+  fs.writeFileSync(out, Buffer.from(shot.result.data, "base64"));
+  console.log("screenshot ->", out);
+
+  const errs = events
+    .filter((e) => e.method === "Runtime.consoleAPICalled")
+    .filter((e) => ["error", "warning"].includes(e.params.type));
+  if (errs.length) {
+    console.log("--- page console errors/warnings ---");
+    for (const e of errs.slice(0, 15)) {
+      const text = e.params.args.map((a) => a.value ?? a.description ?? "").join(" ");
+      console.log(" ", e.params.type + ":", text.slice(0, 220));
+    }
+  } else {
+    console.log("no page errors or warnings");
+  }
+
+  ws.close();
+  cleanup();
+}
+
+main().catch((e) => { console.error("FAILED:", e.message); cleanup(); process.exit(1); });
