@@ -28,3 +28,7 @@ pnpm-debug.log*
 
 # secrets
 openaikey
+.apikey
+
+# Scratch output from ./create and ./edit
+*-out.png

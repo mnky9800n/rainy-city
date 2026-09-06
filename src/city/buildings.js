@@ -37,6 +37,7 @@ export const buildingTypes = {
     color: "#4a6a8a",
   },
   radio_tower: {
+    singleton: true,
     footprint: [4, 4],
     spriteWidth: 256,
     spriteHeight: 640,
@@ -50,6 +51,7 @@ export const buildingTypes = {
     },
   },
   nyt_tower: {
+    singleton: true,
     footprint: [3, 3],
     spriteWidth: 192,
     spriteHeight: 480,
@@ -63,6 +65,7 @@ export const buildingTypes = {
     },
   },
   cinema: {
+    singleton: true,
     footprint: [3, 3],
     spriteWidth: 192,
     spriteHeight: 180,
@@ -73,6 +76,22 @@ export const buildingTypes = {
       description: "Rainy City's last single-screen theatre — neon marquee, sticky floors, and the best popcorn in town. Check the Rainy City Events calendar for screenings, listening parties, and other happenings around town.",
       linkUrl: "https://luma.com/calendar/cal-bWJ95iTQ0TVUUjt",
       linkText: "See what's on at Rainy City Events →",
+    },
+  },
+  library: {
+    singleton: true,
+    // Low and wide, unlike the towers: the sprite includes the plaza it sits
+    // on, which is exactly the 4x4 footprint diamond.
+    footprint: [4, 4],
+    spriteWidth: 256,
+    spriteHeight: 180,
+    color: "#c9a97a",
+    fullSpriteHitTest: true,
+    popupContent: {
+      title: "Rainy City Public Library",
+      description: "Timber, glass and a card catalog Lisa refused to let the city digitise. Two floors of reading rooms lit warm against the weather, solar panels on the roof, and a plaza out front that nobody sits in because it is always raining. Also the home of Rainy City Publishing.",
+      linkUrl: "https://rainy-city.com/publishing",
+      linkText: "Rainy City Publishing →",
     },
   },
 };
@@ -377,7 +396,12 @@ function loadAndSliceSpritesheet(src, targetWidth, targetHeight) {
 
       resolve(canvases);
     };
-    img.onerror = () => reject(new Error(`Failed to load spritesheet: ${src}`));
+    img.onerror = () => {
+      // Resolve rather than reject: Promise.all in loadBuildingSpritesheets
+      // would otherwise let one missing PNG take down the entire city.
+      console.error(`Failed to load spritesheet: ${src}`);
+      resolve([]);
+    };
     img.src = src;
   });
 }
@@ -415,7 +439,7 @@ export function applyRainyFilter(canvas) {
 
 // Load building spritesheets and return sliced variants.
 export async function loadBuildingSpritesheets() {
-  const [houseVariants, shopVariants, commercialVariants, apartmentVariants, skyscraperVariants, radioTowerVariants, nytTowerVariants, cinemaVariants] = await Promise.all([
+  const [houseVariants, shopVariants, commercialVariants, apartmentVariants, skyscraperVariants, radioTowerVariants, nytTowerVariants, cinemaVariants, libraryVariants] = await Promise.all([
     loadAndSliceSpritesheet(
       "/textures/buildings/houses.png",
       buildingTypes.house.spriteWidth,
@@ -456,10 +480,15 @@ export async function loadBuildingSpritesheets() {
       buildingTypes.cinema.spriteWidth,
       buildingTypes.cinema.spriteHeight
     ),
+    loadAndSliceSpritesheet(
+      "/textures/buildings/library.png",
+      buildingTypes.library.spriteWidth,
+      buildingTypes.library.spriteHeight
+    ),
   ]);
 
   // Apply rainy filter to all sprites
-  const filtered = { house: houseVariants, shop: shopVariants, commercial: commercialVariants, apartment: apartmentVariants, skyscraper: skyscraperVariants, radio_tower: radioTowerVariants, nyt_tower: nytTowerVariants, cinema: cinemaVariants };
+  const filtered = { house: houseVariants, shop: shopVariants, commercial: commercialVariants, apartment: apartmentVariants, skyscraper: skyscraperVariants, radio_tower: radioTowerVariants, nyt_tower: nytTowerVariants, cinema: cinemaVariants, library: libraryVariants };
   for (const variants of Object.values(filtered)) {
     if (Array.isArray(variants)) {
       variants.forEach(applyRainyFilter);
@@ -494,7 +523,7 @@ export function generateProceduralBuildingSprites() {
 // Generate all building sprites, loading spritesheets.
 export async function generateAllBuildingSprites() {
   const variants = await loadBuildingSpritesheets();
-  return { house: variants.house, shop: variants.shop, commercial: variants.commercial, apartment: variants.apartment, skyscraper: variants.skyscraper, radio_tower: variants.radio_tower, nyt_tower: variants.nyt_tower, cinema: variants.cinema };
+  return { house: variants.house, shop: variants.shop, commercial: variants.commercial, apartment: variants.apartment, skyscraper: variants.skyscraper, radio_tower: variants.radio_tower, nyt_tower: variants.nyt_tower, cinema: variants.cinema, library: variants.library };
 }
 
 // Check if a building can be placed at (x, y) with the given footprint.
@@ -505,7 +534,7 @@ export function canPlaceBuilding(x, y, typeName, elevationMap, roadSet, building
   const [fw, fh] = type.footprint;
 
   // Singleton landmarks — only one of each allowed.
-  if (typeName === "radio_tower" || typeName === "nyt_tower" || typeName === "cinema") {
+  if (type.singleton) {
     for (const entry of buildingMap.values()) {
       if (entry.type === typeName) return false;
     }
@@ -608,6 +637,8 @@ export function autoFillBuildings(elevationMap, roadSet, existingBuildingMap) {
   placeLandmarkNearCenter("nyt_tower", 8, -8);
   // Cinema sits on the opposite side from NYT tower so the three landmarks spread out.
   placeLandmarkNearCenter("cinema", -8, 8);
+  // Library takes the remaining diagonal, so the four landmarks sit in a loose square.
+  placeLandmarkNearCenter("library", 8, 8);
 
   // Simple seeded PRNG
   let seed = 54321;

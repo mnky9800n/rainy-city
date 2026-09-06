@@ -182,6 +182,7 @@ const App = () => {
                     <option value="radio_tower">Radio Tower (4x4)</option>
                     <option value="nyt_tower">Low Impact Fruit Tower (3x3)</option>
                     <option value="cinema">Star Cinema (3x3)</option>
+                    <option value="library">Public Library (4x4)</option>
                   </select>
                 )}
               </label>

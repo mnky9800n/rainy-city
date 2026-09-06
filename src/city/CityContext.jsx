@@ -131,7 +131,9 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
 
   const placeBuilding = useCallback((x, y, typeName) => {
     if (!canPlaceBuilding(x, y, typeName, elevationMap, roadSet, buildingMap)) return false;
-    const variant = Math.floor(Math.random() * 9);
+    // Landmark sheets hold a single building, so the only valid variant is 0.
+    // Rolling 1-8 for one silently drew nothing at all.
+    const variant = buildingTypes[typeName]?.singleton ? 0 : Math.floor(Math.random() * 9);
     setBuildingMap(placeBuildingInMap(x, y, typeName, buildingMap, variant));
     return true;
   }, [elevationMap, roadSet, buildingMap]);
