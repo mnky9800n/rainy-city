@@ -425,8 +425,17 @@ body {
   overscroll-behavior: contain;
   /* A finger in the list scrolls the list; the titlebar is what drags. */
   touch-action: pan-y;
-  /* Firefox can't draw arrow boxes, so it gets a plain bar in the right greys. */
-  scrollbar-color: #c8c8c8 var(--os9-bg-light);
+}
+
+/* Firefox can't draw arrow boxes, so it gets a plain bar in the right greys.
+   This MUST stay scoped: since Chrome 121, setting the standard scrollbar-color
+   makes Chrome ignore every ::-webkit-scrollbar rule below, which silently
+   turned the OS 9 scrollbar back into a default overlay bar. */
+@supports not selector(::-webkit-scrollbar) {
+  .os9-scroll-area {
+    scrollbar-width: thin;
+    scrollbar-color: #c8c8c8 var(--os9-bg-light);
+  }
 }
 
 /* Everything below is WebKit/Blink only -- it's the only way to get the
@@ -461,6 +470,10 @@ body {
     inset -1px -1px 0 var(--os9-bevel-light);
 }
 
+/* Note: macOS Chrome does not render scrollbar buttons at all, so these arrow
+   boxes only appear on Windows and Linux. The trough and thumb style fine
+   everywhere. Getting arrows on macOS would mean hand-rolling a scrollbar in
+   JS, which costs momentum scrolling and touch behaviour -- not worth it. */
 .os9-scroll-area::-webkit-scrollbar-button:single-button {
   display: block;
   height: 15px;
