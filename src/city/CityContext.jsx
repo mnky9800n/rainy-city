@@ -3,7 +3,7 @@ import { tileConfig, gridWidth, gridHeight } from './constants.js';
 import { generateCoastline, generateElevationMap, generateRoads, flattenTerrainAtPoints, taperElevation } from './terrain.js';
 import { getTileCornerHeights } from './rendering.js';
 import { findRoadPath, assignRoadTypes } from './pathfinding.js';
-import { buildingTypes, generateProceduralBuildingSprites, generateAllBuildingSprites, canPlaceBuilding, placeBuildingInMap, removeBuildingFromMap, autoFillBuildings, applyRainyFilter } from './buildings.js';
+import { buildingTypes, generateAllBuildingSprites, canPlaceBuilding, placeBuildingInMap, removeBuildingFromMap, autoFillBuildings, applyRainyFilter } from './buildings.js';
 
 const CityContext = createContext(null);
 
@@ -95,7 +95,9 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
 
   // Building state
   const [buildingMap, setBuildingMap] = useState(() => initialBuildings);
-  const [buildingSprites, setBuildingSprites] = useState(() => generateProceduralBuildingSprites());
+  // Empty until the sprite sheets land. Nothing is visible before then anyway:
+  // FadeOverlay holds an opaque black div over the whole app until `loaded`.
+  const [buildingSprites, setBuildingSprites] = useState({});
 
   const [loaded, setLoaded] = useState(false);
 
@@ -105,7 +107,9 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
       setBuildingSprites(sprites);
       setLoaded(true);
     }).catch(err => {
-      console.warn("Failed to load building spritesheets, keeping procedural sprites:", err);
+      // Still flip `loaded`: it gates FadeOverlay, and leaving it false would
+      // leave an opaque black div covering the entire site with no error shown.
+      console.error("Failed to load building spritesheets; buildings will not draw:", err);
       setLoaded(true);
     });
   }, []);

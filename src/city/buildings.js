@@ -1,47 +1,40 @@
-import { tileWidth, tileHeight, elevationScale, gridWidth, gridHeight } from './constants.js';
+import { gridWidth, gridHeight } from './constants.js';
 
 // Building type definitions
 // footprint: [width, height] in tiles
 // spriteWidth/spriteHeight: pixel dimensions of the sprite canvas
-// color: base color for placeholder sprite generation
 // popupContent: optional { title, description } for InfoPopup on click
 export const buildingTypes = {
   house: {
     footprint: [1, 1],
     spriteWidth: 64,
     spriteHeight: 80,
-    color: "#a0522d",
   },
   shop: {
     footprint: [1, 1],
     spriteWidth: 64,
     spriteHeight: 80,
-    color: "#cd853f",
   },
   commercial: {
     footprint: [2, 2],
     spriteWidth: 128,
     spriteHeight: 128,
-    color: "#8b7355",
   },
   apartment: {
     footprint: [2, 2],
     spriteWidth: 128,
     spriteHeight: 192,
-    color: "#708090",
   },
   skyscraper: {
     footprint: [3, 3],
     spriteWidth: 192,
     spriteHeight: 320,
-    color: "#4a6a8a",
   },
   radio_tower: {
     singleton: true,
     footprint: [4, 4],
     spriteWidth: 256,
     spriteHeight: 640,
-    color: "#e63946",
     fullSpriteHitTest: true,
     popupContent: {
       title: "Rainy City Radio 99.7FM",
@@ -55,7 +48,6 @@ export const buildingTypes = {
     footprint: [3, 3],
     spriteWidth: 192,
     spriteHeight: 480,
-    color: "#b0bcc9",
     fullSpriteHitTest: true,
     popupContent: {
       title: "Low Impact Fruit",
@@ -69,7 +61,6 @@ export const buildingTypes = {
     footprint: [3, 3],
     spriteWidth: 192,
     spriteHeight: 180,
-    color: "#d8c4a4",
     fullSpriteHitTest: true,
     popupContent: {
       title: "The Star Cinema",
@@ -89,7 +80,6 @@ export const buildingTypes = {
     // sliced. Without this the slicer plants the slab's underside on the
     // ground and the whole building floats by that much.
     groundInset: 6.6,
-    color: "#c9a97a",
     fullSpriteHitTest: true,
     popupContent: {
       title: "Rainy City Public Library",
@@ -99,196 +89,6 @@ export const buildingTypes = {
     },
   },
 };
-
-// Adjust a hex color brightness by a percentage (-100 to +100)
-function adjustColor(hex, percent) {
-  const num = parseInt(hex.replace("#", ""), 16);
-  const amt = Math.round(2.55 * percent);
-  const R = Math.min(255, Math.max(0, (num >> 16) + amt));
-  const G = Math.min(255, Math.max(0, ((num >> 8) & 0xff) + amt));
-  const B = Math.min(255, Math.max(0, (num & 0xff) + amt));
-  return `rgb(${R},${G},${B})`;
-}
-
-// Helper: draw an isometric box (walls + flat roof) and return roof corner points.
-// wallHeight is in pixels from the base diamond up.
-function drawIsoBox(ctx, cx, bottom, baseW, baseH, wallHeight, color) {
-  const south = { x: cx, y: bottom };
-  const east = { x: cx + baseW / 2, y: bottom - baseH / 2 };
-  const north = { x: cx, y: bottom - baseH };
-  const west = { x: cx - baseW / 2, y: bottom - baseH / 2 };
-
-  const roofSouth = { x: south.x, y: south.y - wallHeight };
-  const roofEast = { x: east.x, y: east.y - wallHeight };
-  const roofNorth = { x: north.x, y: north.y - wallHeight };
-  const roofWest = { x: west.x, y: west.y - wallHeight };
-
-  // Left wall
-  ctx.fillStyle = adjustColor(color, -20);
-  ctx.beginPath();
-  ctx.moveTo(west.x, west.y);
-  ctx.lineTo(south.x, south.y);
-  ctx.lineTo(roofSouth.x, roofSouth.y);
-  ctx.lineTo(roofWest.x, roofWest.y);
-  ctx.closePath();
-  ctx.fill();
-
-  // Right wall
-  ctx.fillStyle = adjustColor(color, -40);
-  ctx.beginPath();
-  ctx.moveTo(south.x, south.y);
-  ctx.lineTo(east.x, east.y);
-  ctx.lineTo(roofEast.x, roofEast.y);
-  ctx.lineTo(roofSouth.x, roofSouth.y);
-  ctx.closePath();
-  ctx.fill();
-
-  // Top face
-  ctx.fillStyle = adjustColor(color, 15);
-  ctx.beginPath();
-  ctx.moveTo(roofNorth.x, roofNorth.y);
-  ctx.lineTo(roofEast.x, roofEast.y);
-  ctx.lineTo(roofSouth.x, roofSouth.y);
-  ctx.lineTo(roofWest.x, roofWest.y);
-  ctx.closePath();
-  ctx.fill();
-
-  // Outlines
-  ctx.strokeStyle = "rgba(0,0,0,0.3)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(roofNorth.x, roofNorth.y);
-  ctx.lineTo(roofEast.x, roofEast.y);
-  ctx.lineTo(roofSouth.x, roofSouth.y);
-  ctx.lineTo(roofWest.x, roofWest.y);
-  ctx.closePath();
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(roofSouth.x, roofSouth.y);
-  ctx.lineTo(south.x, south.y);
-  ctx.moveTo(roofWest.x, roofWest.y);
-  ctx.lineTo(west.x, west.y);
-  ctx.moveTo(roofEast.x, roofEast.y);
-  ctx.lineTo(east.x, east.y);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(west.x, west.y);
-  ctx.lineTo(south.x, south.y);
-  ctx.lineTo(east.x, east.y);
-  ctx.stroke();
-
-  return { south, east, north, west, roofSouth, roofEast, roofNorth, roofWest };
-}
-
-// House: box with a peaked/gabled roof ridge running north-south
-function generateHouseSprite(type) {
-  const { spriteWidth, spriteHeight, footprint, color } = type;
-  const [fw, fh] = footprint;
-  const canvas = document.createElement("canvas");
-  canvas.width = spriteWidth;
-  canvas.height = spriteHeight;
-  const ctx = canvas.getContext("2d");
-
-  const baseW = fw * tileWidth;
-  const baseH = fh * tileHeight;
-  const wallHeight = (spriteHeight - baseH / 2) * 0.55;
-  const cx = spriteWidth / 2;
-  const bottom = spriteHeight;
-
-  const { roofSouth, roofEast, roofNorth, roofWest } = drawIsoBox(ctx, cx, bottom, baseW, baseH, wallHeight, color);
-
-  // Peaked ridge: a point above the roof center
-  const ridgeHeight = (spriteHeight - baseH / 2) - wallHeight;
-  const ridgeN = { x: roofNorth.x, y: roofNorth.y - ridgeHeight };
-  const ridgeS = { x: roofSouth.x, y: roofSouth.y - ridgeHeight };
-
-  // Left roof slope (west face of roof)
-  ctx.fillStyle = adjustColor(color, 5);
-  ctx.beginPath();
-  ctx.moveTo(roofNorth.x, roofNorth.y);
-  ctx.lineTo(roofWest.x, roofWest.y);
-  ctx.lineTo(roofSouth.x, roofSouth.y);
-  ctx.lineTo(ridgeS.x, ridgeS.y);
-  ctx.lineTo(ridgeN.x, ridgeN.y);
-  ctx.closePath();
-  ctx.fill();
-
-  // Right roof slope (east face of roof)
-  ctx.fillStyle = adjustColor(color, -10);
-  ctx.beginPath();
-  ctx.moveTo(roofNorth.x, roofNorth.y);
-  ctx.lineTo(roofEast.x, roofEast.y);
-  ctx.lineTo(roofSouth.x, roofSouth.y);
-  ctx.lineTo(ridgeS.x, ridgeS.y);
-  ctx.lineTo(ridgeN.x, ridgeN.y);
-  ctx.closePath();
-  ctx.fill();
-
-  // Ridge line and roof edges
-  ctx.strokeStyle = "rgba(0,0,0,0.3)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(ridgeN.x, ridgeN.y);
-  ctx.lineTo(ridgeS.x, ridgeS.y);
-  ctx.moveTo(ridgeN.x, ridgeN.y);
-  ctx.lineTo(roofWest.x, roofWest.y);
-  ctx.moveTo(ridgeN.x, ridgeN.y);
-  ctx.lineTo(roofEast.x, roofEast.y);
-  ctx.moveTo(ridgeS.x, ridgeS.y);
-  ctx.lineTo(roofWest.x, roofWest.y);
-  ctx.moveTo(ridgeS.x, ridgeS.y);
-  ctx.lineTo(roofEast.x, roofEast.y);
-  ctx.stroke();
-
-  return canvas;
-}
-
-// Apartment: tall flat-roofed box with horizontal floor lines
-function generateApartmentSprite(type) {
-  const { spriteWidth, spriteHeight, footprint, color } = type;
-  const [fw, fh] = footprint;
-  const canvas = document.createElement("canvas");
-  canvas.width = spriteWidth;
-  canvas.height = spriteHeight;
-  const ctx = canvas.getContext("2d");
-
-  const baseW = fw * tileWidth;
-  const baseH = fh * tileHeight;
-  const wallHeight = spriteHeight - baseH / 2;
-  const cx = spriteWidth / 2;
-  const bottom = spriteHeight;
-
-  const { south, east, west, roofSouth, roofEast, roofWest } = drawIsoBox(ctx, cx, bottom, baseW, baseH, wallHeight, color);
-
-  // Draw floor separator lines on both visible walls
-  const floors = 4;
-  ctx.strokeStyle = "rgba(0,0,0,0.15)";
-  ctx.lineWidth = 1;
-  for (let i = 1; i < floors; i++) {
-    const t = i / floors;
-    // Left wall floor line
-    const lx1 = west.x + (roofWest.x - west.x) * t;
-    const ly1 = west.y + (roofWest.y - west.y) * t;
-    const lx2 = south.x + (roofSouth.x - south.x) * t;
-    const ly2 = south.y + (roofSouth.y - south.y) * t;
-    ctx.beginPath();
-    ctx.moveTo(lx1, ly1);
-    ctx.lineTo(lx2, ly2);
-    ctx.stroke();
-    // Right wall floor line
-    const rx1 = south.x + (roofSouth.x - south.x) * t;
-    const ry1 = south.y + (roofSouth.y - south.y) * t;
-    const rx2 = east.x + (roofEast.x - east.x) * t;
-    const ry2 = east.y + (roofEast.y - east.y) * t;
-    ctx.beginPath();
-    ctx.moveTo(rx1, ry1);
-    ctx.lineTo(rx2, ry2);
-    ctx.stroke();
-  }
-
-  return canvas;
-}
-
 
 // Load a spritesheet image and slice it into 9 cells (3x3 grid).
 // Detects gaps between buildings to find actual cell boundaries rather than
@@ -501,27 +301,6 @@ export async function loadBuildingSpritesheets() {
     }
   }
   return filtered;
-}
-
-// Generate a building sprite based on type. Each type has a distinct shape.
-export function generateBuildingSprite(typeName) {
-  const type = buildingTypes[typeName];
-  if (!type) return null;
-
-  switch (typeName) {
-    case "house": return generateHouseSprite(type);
-    case "apartment": return generateApartmentSprite(type);
-    default: return generateHouseSprite(type);
-  }
-}
-
-// Generate all placeholder building sprites (procedural only, synchronous).
-export function generateProceduralBuildingSprites() {
-  const sprites = {};
-  for (const typeName of Object.keys(buildingTypes)) {
-    sprites[typeName] = generateBuildingSprite(typeName);
-  }
-  return sprites;
 }
 
 // Generate all building sprites, loading spritesheets.

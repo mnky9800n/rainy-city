@@ -88,7 +88,6 @@ the bloom, so they can flicker independently.
   footprint: [w, h],        // in tiles
   spriteWidth: w * 64,      // MUST be footprint width x tileWidth (64)
   spriteHeight: <px>,       // footprint height x 32, plus the building's height
-  color: "#rrggbb",         // procedural placeholder fill
   fullSpriteHitTest: true,  // click anywhere on the sprite, not just its tiles
   groundInset: 0,           // see below; only needed if the art has a ground slab
   popupContent: { title, description, linkUrl, linkText },
