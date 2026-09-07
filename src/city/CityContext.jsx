@@ -138,10 +138,6 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     return true;
   }, [elevationMap, roadSet, buildingMap]);
 
-  const removeBuilding = useCallback((x, y) => {
-    setBuildingMap(removeBuildingFromMap(x, y, buildingMap));
-  }, [buildingMap]);
-
   const resetRoads = useCallback(() => {
     setElevationMap(baseElevation);
     setRoadSet(new Map());
@@ -160,25 +156,6 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     setRoadStartTile(null);
     setRoadPreviewPath(null);
   }, [baseElevation]);
-
-  const destroyTile = useCallback((x, y) => {
-    const newElevation = elevationMap.map(row => [...row]);
-    newElevation[y][x] = baseElevation[y][x];
-    taperElevation(newElevation, gridWidth, gridHeight);
-
-    const newRoads = new Map(roadSet);
-    newRoads.delete(`${x},${y}`);
-
-    // Remove any building on this tile
-    let newBuildings = buildingMap;
-    if (buildingMap.has(`${x},${y}`)) {
-      newBuildings = removeBuildingFromMap(x, y, buildingMap);
-    }
-
-    setElevationMap(newElevation);
-    setRoadSet(newRoads);
-    setBuildingMap(newBuildings);
-  }, [elevationMap, baseElevation, roadSet, buildingMap]);
 
   const destroyTiles = useCallback((tileList) => {
     const newElevation = elevationMap.map(row => [...row]);
@@ -272,7 +249,6 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     showWaterSurface,
     drawRoadsMode,
     destructionMode,
-    destroyTile,
     destroyTiles,
     roadStartTile,
     setRoadStartTile,
@@ -284,7 +260,6 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
     buildingMap,
     buildingSprites,
     placeBuilding,
-    removeBuilding,
     placeBuildingsMode,
     selectedBuildingType,
     loaded,

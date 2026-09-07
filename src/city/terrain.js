@@ -238,18 +238,3 @@ export function generateRoads(gridWidth, gridHeight, elevationMap, spacing = 8) 
 
   return roads;
 }
-
-export function generateRiverPath(gridWidth, gridHeight, seed = 42) {
-  const rand = mulberry32(seed);
-  const river = [];
-  let x = Math.floor(gridWidth / 2);
-
-  for (let y = 0; y < gridHeight; y++) {
-    if (y > 0 && rand() < 0.3) {
-      x += rand() < 0.5 ? -1 : 1;
-      x = Math.max(1, Math.min(gridWidth - 2, x));
-    }
-    river.push(x);
-  }
-  return river;
-}

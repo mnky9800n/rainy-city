@@ -13,7 +13,7 @@ const DebugLayer = ({ onBuildingClick }) => {
     hoveredTile, setHoveredTile, debugMode,
     drawRoadsMode, roadStartTile, setRoadStartTile,
     roadPreviewPath, setRoadPreviewPath, placeRoad,
-    destructionMode, destroyTile, destroyTiles,
+    destructionMode, destroyTiles,
     roadSet, buildingMap, placeBuilding, placeBuildingsMode, selectedBuildingType,
   } = useCityContext();
 
@@ -400,7 +400,7 @@ const DebugLayer = ({ onBuildingClick }) => {
       canvas.removeEventListener("mousemove", handleMouseMove);
       canvas.removeEventListener("contextmenu", handleContextMenu);
     };
-  }, [interactionEnabled, debugMode, drawRoadsMode, destructionMode, destroyTile, destroyTiles, dimensions, zoom, panX, panY, elevationMap, cornerMatrix, setHoveredTile, roadStartTile, setRoadStartTile, setRoadPreviewPath, placeRoad, spawnExplosion, runExplosionLoop, redrawOverlays, buildingMap, onBuildingClick, placeBuildingsMode, selectedBuildingType, placeBuilding]);
+  }, [interactionEnabled, debugMode, drawRoadsMode, destructionMode, destroyTiles, dimensions, zoom, panX, panY, elevationMap, cornerMatrix, setHoveredTile, roadStartTile, setRoadStartTile, setRoadPreviewPath, placeRoad, spawnExplosion, runExplosionLoop, redrawOverlays, buildingMap, onBuildingClick, placeBuildingsMode, selectedBuildingType, placeBuilding]);
 
   // Clear road drawing state when mode is disabled
   useEffect(() => {
