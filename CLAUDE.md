@@ -6,10 +6,11 @@ from `main` by `.github/workflows/deploy.yml`.
 
 ## Things that will bite you
 
-- **Tailwind is not installed.** `src/index.css` opens with `@tailwind`
-  directives, but there is no `tailwindcss` dependency and no config, so those
-  directives compile to nothing and every Tailwind class in the codebase is
-  dead. Style with `os9-` classes and inline `style={{}}` objects.
+- **Tailwind does not work here.** `tailwindcss` is present in `node_modules`
+  (pulled in transitively), but there is no `tailwind.config.js`, so CRA never
+  enables its PostCSS plugin. Any `@tailwind` directive ships verbatim as an
+  invalid at-rule and every Tailwind utility class is dead. Style with `os9-`
+  classes and inline `style={{}}` objects.
 - **There is no router.** Screens are conditional renders off `App.jsx` state.
   A page that needs its own URL goes in `public/` as static HTML (see
   `public/publishing/`), which CRA copies to `build/` verbatim.

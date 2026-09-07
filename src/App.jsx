@@ -53,7 +53,7 @@ const App = () => {
   }, []);
 
   return (
-    <div className="relative w-full h-full bg-gray-900 min-h-screen">
+    <div>
       <CityRenderer
         debugMode={debugMode}
         showSeafloor={showSeafloor}
