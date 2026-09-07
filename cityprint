@@ -1,0 +1,44 @@
+#!/usr/bin/env -S node --no-warnings
+//
+// cityprint — fingerprint the deterministic city layout.
+//
+// Terrain is seeded at 42 and the building fill at 54321, so the coastline,
+// elevation, roads and every building's type/origin/variant are fully
+// determined. Nothing about that is covered by a test, and drift would be
+// silent -- no error, no warning, just a different city.
+//
+// This prints three hashes. If they match across a change, the layout is
+// provably untouched. It runs offline in about two seconds: no dev server, no
+// browser, no dependencies.
+//
+//   ./cityprint
+//
+// It works only because terrain.js, constants.js and the layout half of
+// buildings.js touch no DOM at module scope. Keep it that way -- a top-level
+// `document` or `window` reference in any of them breaks this.
+import { createHash } from "node:crypto";
+import { generateCoastline, generateElevationMap, generateRoads } from "./src/city/terrain.js";
+import { autoFillBuildings, buildingTypes } from "./src/city/buildings.js";
+import { gridWidth, gridHeight } from "./src/city/constants.js";
+
+const elevation = generateElevationMap(gridWidth, gridHeight, generateCoastline(gridWidth), 42);
+const roads = generateRoads(gridWidth, gridHeight, elevation);
+const buildings = autoFillBuildings(elevation, roads, new Map());
+
+const h = (s) => createHash("sha1").update(s).digest("hex").slice(0, 12);
+const buildingLines = [...buildings.entries()]
+  .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  .map(([k, v]) => `${k} ${v.type} ${v.originX},${v.originY} v${v.variant}`);
+
+console.log(`bldgTiles ${buildings.size}   roadTiles ${roads.size}`);
+console.log(`elev ${h(JSON.stringify(elevation))}`);
+console.log(`road ${h(JSON.stringify([...roads.entries()].sort()))}`);
+console.log(`bldg ${h(buildingLines.join("\n"))}`);
+
+const landmarks = [];
+for (const [, v] of buildings) {
+  if (!buildingTypes[v.type]?.singleton) continue;
+  const at = `${v.type}@${v.originX},${v.originY}`;
+  if (!landmarks.includes(at)) landmarks.push(at);
+}
+console.log("landmarks: " + landmarks.sort().join("  "));
