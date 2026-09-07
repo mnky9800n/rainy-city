@@ -3,7 +3,6 @@ import { useCityContext } from '../CityContext.jsx';
 import { getOffsets } from '../isometric.js';
 import { tileWidth, tileHeight, elevationScale } from '../constants.js';
 import { toScreenCoords, drawTile, adjustBrightness } from '../rendering.js';
-import { buildingTypes } from '../buildings.js';
 
 const TerrainLayer = ({ showRoads = true }) => {
   const canvasRef = useRef(null);

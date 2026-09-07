@@ -254,7 +254,7 @@ const BeaconLayer = React.memo(() => {
       const ACCENT_PULSE_PERIOD = 3.2;
 
       const drawn = new Set();
-      for (const [key, building] of bMap) {
+      for (const building of bMap.values()) {
         const isTowerBlinker =
           building.type === 'skyscraper' ||
           building.type === 'radio_tower' ||

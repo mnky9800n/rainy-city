@@ -8,10 +8,6 @@ export const tileConfig = {
     color: "#3a6b47",
     texture: "./textures/grass.png"
   },
-  building: {
-    color: "#7f8c8d"
-    // No texture - buildings render via sprite sheets in buildings.js; tile falls back to color
-  },
   road: {
     color: "#34495e",
     texture: "./textures/road.png"

@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from "react";
 import { useCityContext } from '../CityContext.jsx';
 import { getOffsets } from '../isometric.js';
 import { toScreenCoords, getBuildingSpriteRect } from '../rendering.js';
-import { tileWidth, tileHeight, elevationScale } from '../constants.js';
+import { tileHeight, elevationScale } from '../constants.js';
 import { buildingTypes } from '../buildings.js';
 
 // ---------------------------------------------------------------------------
@@ -38,12 +38,9 @@ const DIR_SCREEN = {
 // Road type → allowed direction vectors
 const ROAD_DIRS = {
   road:              [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }],
-  road_cross:        [{ dx: 1, dx: 1, dy: 0 }, { dx: -1, dy: 0 }],
+  road_cross:        [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }],
   road_intersection: [{ dx: 0, dy: -1 }, { dx: 0, dy: 1 }, { dx: 1, dy: 0 }, { dx: -1, dy: 0 }],
 };
-
-// Correct road_cross entry (the duplicate key above was a typo guard — define cleanly):
-ROAD_DIRS.road_cross = [{ dx: 1, dy: 0 }, { dx: -1, dy: 0 }];
 
 // ---------------------------------------------------------------------------
 // Road graph construction

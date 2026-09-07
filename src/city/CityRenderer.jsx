@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { CityProvider, useCityContext } from './CityContext.jsx';
 import SeafloorLayer from './layers/SeafloorLayer.jsx';
 import WaterSurfaceLayer from './layers/WaterSurfaceLayer.jsx';

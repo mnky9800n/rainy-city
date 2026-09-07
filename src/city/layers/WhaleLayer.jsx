@@ -455,7 +455,6 @@ const WhaleLayer = ({ onWhaleClick }) => {
 
           for (const p of whale.blowParticles) {
             if (sprayIdx >= 300) break; // max particles * 3 coords
-            const alpha = 1 - (p.life / p.maxLife);
             // Particle position in screen space relative to head
             sprayPositions[sprayIdx++] = headScreenX + p.ox * z * tileWidth * 0.5;
             sprayPositions[sprayIdx++] = headScreenY - p.oy * z * tileWidth * 0.5; // -oy because spray goes up (+Y in Three.js)
