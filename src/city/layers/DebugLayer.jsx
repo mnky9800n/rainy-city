@@ -6,6 +6,20 @@ import { tileWidth, tileHeight, elevationScale, gridWidth, gridHeight } from '..
 import { findRoadPath } from '../pathfinding.js';
 import { buildingTypes, canPlaceBuilding } from '../buildings.js';
 
+// Normalise a drag rectangle to grid bounds, whichever corner it started from.
+//
+// The destruction preview and the destruction itself both need this. They used
+// to compute it separately, which meant a change to one could bulldoze tiles
+// the other never highlighted.
+function dragRectBounds({ startX, startY, endX, endY }) {
+  return {
+    minX: Math.max(0, Math.min(startX, endX)),
+    maxX: Math.min(gridWidth - 1, Math.max(startX, endX)),
+    minY: Math.max(0, Math.min(startY, endY)),
+    maxY: Math.min(gridHeight - 1, Math.max(startY, endY)),
+  };
+}
+
 const DebugLayer = ({ onBuildingClick }) => {
   const canvasRef = useRef(null);
   const {
@@ -112,11 +126,7 @@ const DebugLayer = ({ onBuildingClick }) => {
 
     // Draw bulldozer drag rectangle preview
     if (destructionMode && dragRef.current) {
-      const { startX, startY, endX, endY } = dragRef.current;
-      const minX = Math.max(0, Math.min(startX, endX));
-      const maxX = Math.min(gridWidth - 1, Math.max(startX, endX));
-      const minY = Math.max(0, Math.min(startY, endY));
-      const maxY = Math.min(gridHeight - 1, Math.max(startY, endY));
+      const { minX, maxX, minY, maxY } = dragRectBounds(dragRef.current);
       for (let y = minY; y <= maxY; y++) {
         for (let x = minX; x <= maxX; x++) {
           const elev = elevationMap[y][x];
@@ -273,11 +283,7 @@ const DebugLayer = ({ onBuildingClick }) => {
       if (!destructionMode || !dragRef.current) return;
       e.stopPropagation();
 
-      const { startX, startY, endX, endY } = dragRef.current;
-      const minX = Math.max(0, Math.min(startX, endX));
-      const maxX = Math.min(gridWidth - 1, Math.max(startX, endX));
-      const minY = Math.max(0, Math.min(startY, endY));
-      const maxY = Math.min(gridHeight - 1, Math.max(startY, endY));
+      const { minX, maxX, minY, maxY } = dragRectBounds(dragRef.current);
 
       const toDestroy = [];
       for (let y = minY; y <= maxY; y++) {
