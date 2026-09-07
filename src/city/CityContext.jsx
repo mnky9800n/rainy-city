@@ -3,7 +3,7 @@ import { tileConfig, gridWidth, gridHeight } from './constants.js';
 import { generateCoastline, generateElevationMap, generateRoads, flattenTerrainAtPoints, taperElevation } from './terrain.js';
 import { getTileCornerHeights } from './rendering.js';
 import { findRoadPath, assignRoadTypes } from './pathfinding.js';
-import { buildingTypes, generateAllBuildingSprites, canPlaceBuilding, placeBuildingInMap, removeBuildingFromMap, autoFillBuildings, applyRainyFilter } from './buildings.js';
+import { buildingTypes, loadBuildingSpritesheets, canPlaceBuilding, placeBuildingInMap, removeBuildingFromMap, autoFillBuildings, applyRainyFilter } from './buildings.js';
 
 const CityContext = createContext(null);
 
@@ -103,7 +103,7 @@ export function CityProvider({ debugMode = false, showWaterSurface = true, drawR
 
   // Load spritesheet-based building sprites asynchronously
   useEffect(() => {
-    generateAllBuildingSprites().then(sprites => {
+    loadBuildingSpritesheets().then(sprites => {
       setBuildingSprites(sprites);
       setLoaded(true);
     }).catch(err => {

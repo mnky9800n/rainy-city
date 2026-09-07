@@ -6,11 +6,13 @@ import { gridWidth, gridHeight } from './constants.js';
 // popupContent: optional { title, description } for InfoPopup on click
 export const buildingTypes = {
   house: {
+    sheet: "houses",
     footprint: [1, 1],
     spriteWidth: 64,
     spriteHeight: 80,
   },
   shop: {
+    sheet: "shops",
     footprint: [1, 1],
     spriteWidth: 64,
     spriteHeight: 80,
@@ -21,11 +23,13 @@ export const buildingTypes = {
     spriteHeight: 128,
   },
   apartment: {
+    sheet: "midsizebuildings",
     footprint: [2, 2],
     spriteWidth: 128,
     spriteHeight: 192,
   },
   skyscraper: {
+    sheet: "skyscrapers",
     footprint: [3, 3],
     spriteWidth: 192,
     spriteHeight: 320,
@@ -241,72 +245,27 @@ export function applyRainyFilter(canvas) {
   return canvas;
 }
 
-// Load building spritesheets and return sliced variants.
+// Load every building type's spritesheet and return its sliced variants.
+//
+// The sheet filename defaults to the type key, so a new building needs no edit
+// here at all -- name the PNG after the key. Only the four older types whose
+// filenames predate that convention carry an explicit `sheet`.
 export async function loadBuildingSpritesheets() {
-  const [houseVariants, shopVariants, commercialVariants, apartmentVariants, skyscraperVariants, radioTowerVariants, nytTowerVariants, cinemaVariants, libraryVariants] = await Promise.all([
+  const entries = Object.entries(buildingTypes);
+  const sliced = await Promise.all(entries.map(([name, type]) =>
     loadAndSliceSpritesheet(
-      "/textures/buildings/houses.png",
-      buildingTypes.house.spriteWidth,
-      buildingTypes.house.spriteHeight
-    ),
-    loadAndSliceSpritesheet(
-      "/textures/buildings/shops.png",
-      buildingTypes.shop.spriteWidth,
-      buildingTypes.shop.spriteHeight
-    ),
-    loadAndSliceSpritesheet(
-      "/textures/buildings/commercial.png",
-      buildingTypes.commercial.spriteWidth,
-      buildingTypes.commercial.spriteHeight
-    ),
-    loadAndSliceSpritesheet(
-      "/textures/buildings/midsizebuildings.png",
-      buildingTypes.apartment.spriteWidth,
-      buildingTypes.apartment.spriteHeight
-    ),
-    loadAndSliceSpritesheet(
-      "/textures/buildings/skyscrapers.png",
-      buildingTypes.skyscraper.spriteWidth,
-      buildingTypes.skyscraper.spriteHeight
-    ),
-    loadAndSliceSpritesheet(
-      "/textures/buildings/radio_tower.png",
-      buildingTypes.radio_tower.spriteWidth,
-      buildingTypes.radio_tower.spriteHeight
-    ),
-    loadAndSliceSpritesheet(
-      "/textures/buildings/nyt_tower.png",
-      buildingTypes.nyt_tower.spriteWidth,
-      buildingTypes.nyt_tower.spriteHeight
-    ),
-    loadAndSliceSpritesheet(
-      "/textures/buildings/cinema.png",
-      buildingTypes.cinema.spriteWidth,
-      buildingTypes.cinema.spriteHeight
-    ),
-    loadAndSliceSpritesheet(
-      "/textures/buildings/library.png",
-      buildingTypes.library.spriteWidth,
-      buildingTypes.library.spriteHeight
-    ),
-  ]);
+      `/textures/buildings/${type.sheet ?? name}.png`,
+      type.spriteWidth,
+      type.spriteHeight
+    )
+  ));
 
-  // Apply rainy filter to all sprites
-  const filtered = { house: houseVariants, shop: shopVariants, commercial: commercialVariants, apartment: apartmentVariants, skyscraper: skyscraperVariants, radio_tower: radioTowerVariants, nyt_tower: nytTowerVariants, cinema: cinemaVariants, library: libraryVariants };
-  for (const variants of Object.values(filtered)) {
-    if (Array.isArray(variants)) {
-      variants.forEach(applyRainyFilter);
-    } else if (variants) {
-      applyRainyFilter(variants);
-    }
-  }
-  return filtered;
-}
-
-// Generate all building sprites, loading spritesheets.
-export async function generateAllBuildingSprites() {
-  const variants = await loadBuildingSpritesheets();
-  return { house: variants.house, shop: variants.shop, commercial: variants.commercial, apartment: variants.apartment, skyscraper: variants.skyscraper, radio_tower: variants.radio_tower, nyt_tower: variants.nyt_tower, cinema: variants.cinema, library: variants.library };
+  const variants = {};
+  entries.forEach(([name], i) => {
+    sliced[i].forEach(applyRainyFilter);
+    variants[name] = sliced[i];
+  });
+  return variants;
 }
 
 // Check if a building can be placed at (x, y) with the given footprint.

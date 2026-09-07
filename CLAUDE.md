@@ -113,12 +113,12 @@ library's plaza is 26.2 source px thick, which is 6.6 sprite px.
 `popupContent` is the **single source of truth** for the name and description.
 Do not retype either anywhere else; the Buildings explorer derives them.
 
-### 3. Load the sprite — same file, `loadBuildingSpritesheets()`
+### 3. Load the sprite — nothing to do
 
-Three mechanical edits: add a `loadAndSliceSpritesheet(...)` call to the
-`Promise.all` array, add the variable to the destructuring above it, and add the
-key to the `filtered` object below. Then add it to the return of
-`generateAllBuildingSprites()`.
+`loadBuildingSpritesheets()` loops over `buildingTypes` and derives the filename
+from the key, so **name the PNG after the key and this step is free**. Only add
+a `sheet: "..."` field if the filename has to differ (four older types do, e.g.
+`apartment` → `midsizebuildings.png`).
 
 ### 4. Place it in the city — same file, `autoFillBuildings()`
 
