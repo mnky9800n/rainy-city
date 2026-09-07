@@ -1,15 +1,18 @@
 import { tileConfig, tileWidth, tileHeight, elevationScale } from './constants.js';
 
-// Helper function to adjust color brightness
-export function adjustBrightness(color, percent) {
+// Shift every channel of a #rrggbb colour by a raw 0-255 delta.
+export function shiftBrightness(color, amount) {
   const num = parseInt(color.replace("#", ""), 16);
-  const amt = Math.round(2.55 * percent);
-  const R = (num >> 16) + amt;
-  const G = (num >> 8 & 0x00FF) + amt;
-  const B = (num & 0x0000FF) + amt;
-  return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
-    (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
-    (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+  const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
+  const r = clamp((num >> 16) + amount);
+  const g = clamp(((num >> 8) & 0xff) + amount);
+  const b = clamp((num & 0xff) + amount);
+  return "#" + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+}
+
+// Same thing in percent, which is what the terrain shading is written in.
+export function adjustBrightness(color, percent) {
+  return shiftBrightness(color, Math.round(2.55 * percent));
 }
 
 // Compute corner heights for smooth slope transitions.

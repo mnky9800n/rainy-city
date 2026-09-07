@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from "react";
 import { useCityContext } from '../CityContext.jsx';
 import { getOffsets } from '../isometric.js';
-import { toScreenCoords, getBuildingSpriteRect } from '../rendering.js';
+import { toScreenCoords, getBuildingSpriteRect, shiftBrightness } from '../rendering.js';
 import { tileHeight, elevationScale } from '../constants.js';
 import { buildingTypes } from '../buildings.js';
 
@@ -105,7 +105,7 @@ function spawnCar(roadSet, graph) {
     const dir = randomFrom(dirs);
     const isTaxi = Math.random() < 0.15;
     const color = isTaxi ? TAXI_COLOR : randomFrom(CAR_COLORS);
-    const roofColor = isTaxi ? '#b0922a' : lightenHex(color, 25);
+    const roofColor = isTaxi ? '#b0922a' : shiftBrightness(color, 25);
 
     return {
       tileX,
@@ -131,14 +131,6 @@ function spawnCar(roadSet, graph) {
  * Minimal hex colour brightening — adds `amount` to each RGB channel,
  * clamped to [0, 255]. Input must be a 6-digit hex string starting with '#'.
  */
-function lightenHex(hex, amount) {
-  const n = parseInt(hex.slice(1), 16);
-  const r = Math.min(255, (n >> 16) + amount);
-  const g = Math.min(255, ((n >> 8) & 0xff) + amount);
-  const b = Math.min(255, (n & 0xff) + amount);
-  return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
-}
-
 // ---------------------------------------------------------------------------
 // Car drawing
 // ---------------------------------------------------------------------------
