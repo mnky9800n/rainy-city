@@ -21,7 +21,12 @@ from `main` by `.github/workflows/deploy.yml`.
   (`"./rain.mp3"`). `buildings.js` is the exception: it uses root-absolute
   `/textures/...`, which only works because the site is served at a domain root.
 - **Never read, print, or commit `openaikey` or `.apikey`.** Both are
-  gitignored. `.apikey` is a `name=value` line, not a bare key.
+  gitignored. `.apikey` is a `name=value` line, not a bare key. `./tools-server`
+  serves `tools/`, `src/` and `public/` and nothing else, specifically so it
+  cannot hand them out; don't replace it with a server on the repo root.
+- **`tools/` is deliberately outside `public/`.** CRA only copies `public/`, so
+  dev tools there can never ship to rainy-city.com — and unlike `public/`, they
+  can import from `src/` and share real code instead of copying it.
 
 ## Adding a landmark building
 
@@ -175,10 +180,21 @@ Then check:
 ### Optional: night lights
 
 `BeaconLayer.jsx` opts types in by name; a type it doesn't know is skipped
-harmlessly. To add lights, clone one of the `public/*-beacon-tool.html` pages
-(change `SPRITE_W`/`SPRITE_H` and the `img.src`), open it, click the lit points,
-paste the emitted JSON into `BeaconLayer.jsx` as a new constant, and add a
-branch beside the existing ones.
+harmlessly. To add lights:
+
+```bash
+npm run tools     # then open the URL it prints
+```
+
+`tools/beacon-tool.html?type=<key>` takes its sprite dimensions, sheet name and
+cell count straight from `buildingTypes`, so there is nothing to configure.
+Click the lit points, right-click to undo, copy the JSON into `BeaconLayer.jsx`
+as a new constant, and add a branch beside the existing ones. Add
+`&kinds=neon,bulb,accent` for a building whose lights behave differently from
+each other (the cinema), and `&scale=` to override the zoom.
+
+Point lights are for things that flicker independently. Broad glows -- lit
+windows -- belong in a glow map instead (§1b).
 
 ## Adding a character
 

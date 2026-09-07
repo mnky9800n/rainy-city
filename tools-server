@@ -1,0 +1,70 @@
+#!/usr/bin/env node
+//
+// tools-server — serve the dev tools in tools/ over HTTP.
+//
+// They cannot be opened as file:// URLs: getImageData on a cross-origin image
+// taints the canvas, and Chrome blocks ES module imports from file origins.
+// They also cannot live in public/, because CRA copies public/ into build/ and
+// they would ship to rainy-city.com, and because public/ cannot reach src/.
+//
+// So: a static server over the three directories the tools need, and nothing
+// else. The whitelist is the point -- a plain server on the repo root would
+// also serve openaikey and .apikey.
+//
+//   npm run tools     # then open http://127.0.0.1:5050/tools/beacon-tool.html
+import { createServer } from "node:http";
+import { readFile, stat } from "node:fs/promises";
+import { extname, join, normalize, sep } from "node:path";
+
+const ROOT = process.cwd();
+const ALLOWED = ["tools", "src", "public"];
+const PORT = Number(process.env.PORT) || 5050;
+
+const TYPES = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",   // required, or ES modules are refused
+  ".jsx": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json",
+  ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+  ".gif": "image/gif", ".svg": "image/svg+xml", ".ico": "image/x-icon",
+  ".woff": "font/woff", ".woff2": "font/woff2",
+  ".glb": "model/gltf-binary", ".mp3": "audio/mpeg",
+};
+
+createServer(async (req, res) => {
+  if (req.method !== "GET") return end(res, 405, "method not allowed");
+
+  const url = decodeURIComponent(new URL(req.url, "http://x").pathname);
+  const rel = normalize(url).replace(/^[/\\]+/, "");
+  const top = rel.split(sep)[0];
+
+  if (!ALLOWED.includes(top)) {
+    return end(res, 403, `only ${ALLOWED.join(", ")} are served\n`);
+  }
+
+  const file = join(ROOT, rel);
+  if (!file.startsWith(join(ROOT, top) + sep) && file !== join(ROOT, top)) {
+    return end(res, 403, "forbidden\n");   // path traversal
+  }
+
+  try {
+    if ((await stat(file)).isDirectory()) return end(res, 403, "no directory listing\n");
+    const body = await readFile(file);
+    res.writeHead(200, {
+      "Content-Type": TYPES[extname(file).toLowerCase()] ?? "application/octet-stream",
+      "Cache-Control": "no-store",
+    });
+    res.end(body);
+  } catch {
+    end(res, 404, `not found: ${rel}\n`);
+  }
+}).listen(PORT, "127.0.0.1", () => {
+  console.log(`tools on http://127.0.0.1:${PORT}/tools/beacon-tool.html?type=cinema`);
+  console.log(`serving only: ${ALLOWED.join(", ")}`);
+});
+
+function end(res, code, msg) {
+  res.writeHead(code, { "Content-Type": "text/plain; charset=utf-8" });
+  res.end(msg);
+}

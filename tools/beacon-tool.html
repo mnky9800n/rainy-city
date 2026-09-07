@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Beacon Placement Tool</title>
+<style>
+  body { background: #111; color: #fff; font-family: monospace; margin: 20px; }
+  h2 { margin: 0 0 4px; }
+  .instructions { margin-bottom: 16px; color: #ccc; line-height: 1.6; max-width: 900px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 20px; }
+  .sprite-box { position: relative; border: 1px solid #444; cursor: crosshair; background: #222; }
+  .beacon-dot {
+    position: absolute; width: 10px; height: 10px; border-radius: 50%;
+    border: 1px solid #fff; transform: translate(-50%, -50%); pointer-events: none;
+  }
+  .label { text-align: center; padding: 4px; font-size: 12px; color: #aaa; }
+  .toolbar { margin: 10px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .toolbar label { background: #222; padding: 4px 10px; border-radius: 4px; cursor: pointer; border: 1px solid #333; }
+  .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; border: 1px solid #fff; }
+  #output { margin-top: 20px; padding: 12px; background: #1a1a1a; border: 1px solid #444; white-space: pre; font-size: 13px; max-width: 900px; }
+  button { margin: 10px 4px; padding: 6px 16px; font-size: 14px; cursor: pointer; }
+  .error { color: #ff8080; }
+  a { color: #6cf; }
+</style>
+</head>
+<body>
+<h2 id="title">Beacon Placement Tool</h2>
+<div class="instructions">
+  Click a sprite to drop a light. Right-click to undo the last one. Copy the JSON
+  into the matching constant in <code>src/city/layers/BeaconLayer.jsx</code>.
+  <div id="hint"></div>
+</div>
+<div class="toolbar" id="toolbar"></div>
+<div class="grid" id="grid"></div>
+<button id="clear">Clear All</button>
+<button id="copy">Copy JSON</button>
+<div id="output"></div>
+
+<script type="module">
+// The sprite geometry and the slicing come from the game itself, so the
+// coordinates this tool emits are guaranteed to land where the renderer draws.
+// Every previous version of this page carried its own copy of the alignment
+// maths, which had to be kept in step with buildings.js by hand.
+import { buildingTypes, loadAndSliceSpritesheet } from '../src/city/buildings.js';
+
+const q = new URLSearchParams(location.search);
+const type = q.get('type') ?? 'skyscraper';
+const spec = buildingTypes[type];
+
+const fail = (msg) => {
+  document.getElementById('output').innerHTML =
+    `<span class="error">${msg}</span>\n\nKnown types: ` +
+    Object.keys(buildingTypes).map(k => `<a href="?type=${k}">${k}</a>`).join(', ');
+};
+
+if (!spec) {
+  fail(`Unknown building type "${type}".`);
+} else {
+  const { spriteWidth: W, spriteHeight: H } = spec;
+  // Big enough to click accurately, small enough to fit on screen.
+  const scale = Number(q.get('scale')) || Math.max(1, Math.min(3, Math.floor(900 / H)));
+  const kinds = (q.get('kinds') ?? '').split(',').filter(Boolean);
+  const KIND_COLOURS = { neon: '#ff2a8e', bulb: '#ffd24a', accent: '#4ad8ff', window: '#ffd9a0' };
+
+  document.getElementById('title').textContent = `Beacon Placement Tool — ${type}`;
+  document.getElementById('hint').textContent =
+    `${W}x${H} sprite at ${scale}x` + (kinds.length ? `, kinds: ${kinds.join(', ')}` : '');
+
+  if (kinds.length) {
+    document.getElementById('toolbar').innerHTML = kinds.map((k, i) => `
+      <label><input type="radio" name="kind" value="${k}" ${i === 0 ? 'checked' : ''}>
+      <span><span class="swatch" style="background:${KIND_COLOURS[k] ?? '#fff'}"></span>${k}</span></label>`).join('');
+  }
+  const currentKind = () =>
+    document.querySelector('input[name=kind]:checked')?.value ?? null;
+
+  // lights[cellIndex] = [{x, y, kind?}]
+  const lights = [];
+
+  function updateOutput() {
+    const norm = (p) => {
+      const o = { x: +(p.x / W).toFixed(4), y: +(p.y / H).toFixed(4) };
+      if (p.kind) o.kind = p.kind;
+      return o;
+    };
+    // One cell emits a flat array; a multi-cell sheet emits it keyed by variant,
+    // which is the shape BEACON_POSITIONS expects.
+    const out = lights.length === 1
+      ? lights[0].map(norm)
+      : Object.fromEntries(lights
+          .map((cell, i) => [i, cell.map(norm)])
+          .filter(([, v]) => v.length));
+    document.getElementById('output').textContent = JSON.stringify(out, null, 2);
+  }
+
+  function addDot(box, x, y, kind) {
+    const dot = document.createElement('div');
+    dot.className = 'beacon-dot';
+    dot.style.background = KIND_COLOURS[kind] ?? '#ff4444';
+    dot.style.boxShadow = `0 0 10px ${KIND_COLOURS[kind] ?? '#ff4444'}`;
+    dot.style.left = (x * scale) + 'px';
+    dot.style.top = (y * scale) + 'px';
+    box.appendChild(dot);
+  }
+
+  document.getElementById('clear').onclick = () => {
+    lights.forEach(c => c.length = 0);
+    document.querySelectorAll('.beacon-dot').forEach(d => d.remove());
+    updateOutput();
+  };
+  document.getElementById('copy').onclick = () =>
+    navigator.clipboard.writeText(document.getElementById('output').textContent);
+
+  const sheet = spec.sheet ?? type;
+  const cells = await loadAndSliceSpritesheet(`/public/textures/buildings/${sheet}.png`, W, H);
+
+  if (!cells.length) {
+    fail(`No cells sliced from /public/textures/buildings/${sheet}.png — is the file there?`);
+  } else {
+    cells.forEach((cell, index) => {
+      lights[index] = [];
+
+      // Checkerboard behind the sprite so transparent regions are obvious.
+      const bg = document.createElement('canvas');
+      bg.width = W * scale; bg.height = H * scale;
+      const bx = bg.getContext('2d');
+      const sq = 8;
+      for (let y = 0; y < bg.height; y += sq)
+        for (let x = 0; x < bg.width; x += sq) {
+          bx.fillStyle = ((x / sq + y / sq) % 2 === 0) ? '#2a2a2a' : '#1a1a1a';
+          bx.fillRect(x, y, sq, sq);
+        }
+      bx.imageSmoothingEnabled = false;
+      bx.drawImage(cell, 0, 0, bg.width, bg.height);
+
+      const box = document.createElement('div');
+      box.className = 'sprite-box';
+      box.style.width = bg.width + 'px';
+      box.style.height = bg.height + 'px';
+      box.style.backgroundImage = `url(${bg.toDataURL()})`;
+
+      box.addEventListener('click', (e) => {
+        const r = box.getBoundingClientRect();
+        const x = (e.clientX - r.left) / scale;
+        const y = (e.clientY - r.top) / scale;
+        const kind = currentKind();
+        lights[index].push({ x: Math.round(x), y: Math.round(y), ...(kind && { kind }) });
+        addDot(box, x, y, kind);
+        updateOutput();
+      });
+
+      box.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        if (!lights[index].length) return;
+        lights[index].pop();
+        const dots = box.querySelectorAll('.beacon-dot');
+        dots[dots.length - 1]?.remove();
+        updateOutput();
+      });
+
+      const label = document.createElement('div');
+      label.className = 'label';
+      label.textContent = cells.length > 1 ? `variant ${index}` : type;
+
+      const wrap = document.createElement('div');
+      wrap.append(box, label);
+      document.getElementById('grid').appendChild(wrap);
+    });
+    updateOutput();
+  }
+}
+</script>
+</body>
+</html>

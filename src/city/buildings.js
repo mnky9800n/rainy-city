@@ -98,7 +98,7 @@ export const buildingTypes = {
 // Detects gaps between buildings to find actual cell boundaries rather than
 // assuming uniform grid spacing. Removes near-invisible pixels before
 // extracting each building and scaling it to target dimensions.
-function loadAndSliceSpritesheet(src, targetWidth, targetHeight) {
+export function loadAndSliceSpritesheet(src, targetWidth, targetHeight) {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
     img.onload = () => {
