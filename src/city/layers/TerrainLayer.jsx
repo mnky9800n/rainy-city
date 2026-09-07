@@ -1,8 +1,8 @@
 import React, { useRef, useEffect } from "react";
 import { useCityContext } from '../CityContext.jsx';
 import { getOffsets } from '../isometric.js';
-import { tileWidth, tileHeight, elevationScale } from '../constants.js';
-import { toScreenCoords, drawTile, adjustBrightness } from '../rendering.js';
+import { tileWidth, tileHeight } from '../constants.js';
+import { toScreenCoords, drawTile, adjustBrightness, seaLevelOffset } from '../rendering.js';
 
 const TerrainLayer = ({ showRoads = true }) => {
   const canvasRef = useRef(null);
@@ -14,22 +14,21 @@ const TerrainLayer = ({ showRoads = true }) => {
     ctx.clearRect(0, 0, dimensions.width, dimensions.height);
 
     const { offsetX, offsetY } = getOffsets(dimensions, zoom, panX, panY);
-    const seaLevelOffset = -0.35 * elevationScale * zoom;
+    const seaOffset = seaLevelOffset(zoom);
 
     for (const tile of tiles) {
       if (tile.type === 'water') {
         if (showWaterSurface) {
           // Draw water surface in the same pass so land tiles paint over it
-          const sx = (tile.x - tile.y) * (tileWidth / 2) * zoom + offsetX;
-          const sy = (tile.x + tile.y) * (tileHeight / 2) * zoom + offsetY;
+          const { screenX: sx, screenY: sy } = toScreenCoords(tile.x, tile.y, zoom, offsetX, offsetY);
           ctx.save();
           ctx.fillStyle = adjustBrightness('#2980b9', 20);
           ctx.globalAlpha = 0.6;
           ctx.beginPath();
-          ctx.moveTo(sx, sy + seaLevelOffset);
-          ctx.lineTo(sx + (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaLevelOffset);
-          ctx.lineTo(sx, sy + tileHeight * zoom + seaLevelOffset);
-          ctx.lineTo(sx - (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaLevelOffset);
+          ctx.moveTo(sx, sy + seaOffset);
+          ctx.lineTo(sx + (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaOffset);
+          ctx.lineTo(sx, sy + tileHeight * zoom + seaOffset);
+          ctx.lineTo(sx - (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + seaOffset);
           ctx.closePath();
           ctx.fill();
           ctx.restore();

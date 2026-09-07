@@ -3,7 +3,8 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { useCityContext } from '../CityContext.jsx';
 import { getOffsets } from '../isometric.js';
-import { tileWidth, tileHeight, elevationScale, gridWidth, gridHeight } from '../constants.js';
+import { tileWidth, gridWidth, gridHeight } from '../constants.js';
+import { toScreenCoords, seaLevelOffset } from '../rendering.js';
 
 function isWater(elevationMap, x, y) {
   const ix = Math.floor(x);
@@ -247,7 +248,7 @@ const WhaleLayer = ({ onWhaleClick }) => {
       // Current view
       const { dimensions: dim, zoom: z, panX: px, panY: py } = viewRef.current;
       const { offsetX, offsetY } = getOffsets(dim, z, px, py);
-      const seaLevelOffset = -0.35 * elevationScale * z;
+      const seaOffset = seaLevelOffset(z);
 
       // Update camera frustum to match screen
       const halfW = dim.width / 2;
@@ -373,9 +374,8 @@ const WhaleLayer = ({ onWhaleClick }) => {
         }
 
         // --- Position: tile coords -> isometric screen coords -> Three.js coords ---
-        // Isometric screen position (same formula as TerrainLayer)
-        const screenX = (whale.x - whale.y) * (tileWidth / 2) * z + offsetX;
-        const screenY = (whale.x + whale.y) * (tileHeight / 2) * z + offsetY + seaLevelOffset;
+        const { screenX, screenY: surfaceY } = toScreenCoords(whale.x, whale.y, z, offsetX, offsetY);
+        const screenY = surfaceY + seaOffset;
 
         // Three.js orthographic: origin at screen center, Y is up
         const tx = screenX - halfW;

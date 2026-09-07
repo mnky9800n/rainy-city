@@ -51,6 +51,13 @@ export function toScreenCoords(tileX, tileY, zoom, offsetX, offsetY) {
   return { screenX, screenY };
 }
 
+// The water surface sits slightly below the land plane. Both the terrain layer
+// and the whales need it, and if they ever disagree the whales swim above or
+// below the water instead of in it.
+export function seaLevelOffset(zoom) {
+  return -0.35 * elevationScale * zoom;
+}
+
 // Draw a single isometric tile
 export function drawTile(ctx, x, y, elevation, type, corners, zoom, textures) {
   ctx.save();
