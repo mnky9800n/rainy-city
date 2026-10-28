@@ -125,12 +125,36 @@ a:focus-visible {
 }
 .logo-well img { display: block; width: 100%; max-width: 300px; height: auto; }
 
-.welcome {
-  margin: 12px 0 20px;
-  text-align: center;
-  font-size: 13px;
-  color: #333;
+/* Lisa and the library's welcome. */
+.intro {
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  gap: 22px;
+  align-items: start;
+  margin-top: 20px;
 }
+.portrait {
+  border: 1px solid var(--os9-border);
+  box-shadow:
+    inset 1px 1px 0 var(--os9-bevel-dark),
+    inset -1px -1px 0 var(--os9-bevel-light);
+  background: #38424f;
+  padding: 3px;
+}
+.portrait img { display: block; width: 100%; height: auto; }
+.caption {
+  font-size: 12px;
+  margin-top: 5px;
+  color: #444;
+  text-align: center;
+}
+.intro h1 {
+  font-family: var(--os9-font-title);
+  font-size: 18px;
+  line-height: 1.3;
+  margin: 0 0 10px;
+}
+.intro p { margin: 0 0 10px; max-width: 58ch; }
 
 /* Cover beside its catalog card. */
 .record {
@@ -198,7 +222,7 @@ a:focus-visible {
   box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.45);
 }
 
-.catalog-card h1 {
+.catalog-card h3 {
   font-family: var(--card-font);
   font-weight: 600;
   font-size: 19px;
@@ -214,6 +238,7 @@ a:focus-visible {
 .catalog-card dt { color: #6b6658; }
 .catalog-card dd { margin: 0; }
 .status { color: var(--card-red); }
+.catalog-card .summary { margin: 24px 0 0; }
 
 /* Mac OS 9 default push button: a rounded button inside a thick black ring. */
 .buy {
@@ -254,51 +279,15 @@ a:focus-visible {
 
 h2 {
   font-family: var(--os9-font-title);
-  font-size: 14px;
-  margin: 0 0 8px;
-}
-.about p { margin: 0 0 12px; max-width: 62ch; }
-
-blockquote {
-  margin: 16px 0 0;
-  padding: 12px 16px;
-  background: var(--os9-bg-light);
-  border: 1px solid var(--os9-border);
-  box-shadow:
-    inset 1px 1px 0 var(--os9-bevel-dark),
-    inset -1px -1px 0 var(--os9-bevel-light);
-}
-blockquote p {
-  margin: 0 0 6px;
-  font-family: var(--card-font);
   font-size: 15px;
-  line-height: 1.6;
+  margin: 0 0 14px;
 }
-blockquote footer { font-size: 12px; color: #444; }
-
-.staff-pick {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-}
-.staff-pick img {
-  flex: none;
-  width: 72px;
-  height: 72px;
-  object-fit: cover;
-  object-position: 50% 0%;
-  border: 1px solid var(--os9-border);
-  box-shadow:
-    inset 1px 1px 0 var(--os9-bevel-dark),
-    inset -1px -1px 0 var(--os9-bevel-light);
-}
-.staff-pick p { margin: 0; }
-.staff-pick .who { font-size: 12px; color: #444; margin-top: 4px; }
 
 @media (max-width: 640px) {
   body { padding: 16px 10px 32px; }
   .os9-content { padding: 14px; }
-  .record { grid-template-columns: 1fr; }
+  .intro, .record { grid-template-columns: 1fr; }
+  .intro > div:first-child { width: 100%; max-width: 260px; justify-self: center; }
   .cover { width: 200px; justify-self: center; }
 }
 </style>
@@ -314,63 +303,65 @@ blockquote footer { font-size: 12px; color: #444; }
     <div class="logo-well">
       <img src="/publishing/rainy-city-logo.png" alt="Rainy-city.com">
     </div>
-    <p class="welcome">New on the shelf at the Rainy City Public Library</p>
 
-    <div class="record">
-      <a class="cover" href="https://www.amazon.com/dp/8269505803">
-        <img src="/publishing/selected-works-26-vol-1.png" alt="Cover of Selected Works '26 vol. 1 by John M. Aiken">
-      </a>
+    <section class="intro">
+      <div>
+        <div class="portrait">
+          <img src="/characters/lisa.jpg" alt="Lisa, librarian at the Rainy City Public Library">
+        </div>
+        <div class="caption">Lisa, at the desk</div>
+      </div>
 
       <div>
-        <div class="catalog-card">
-          <div class="call-number">818.6<br>AIK</div>
-          <h1>Selected Works &rsquo;26, vol.&nbsp;1</h1>
-          <dl>
-            <dt>Author</dt>    <dd>Aiken, John M.</dd>
-            <dt>Publisher</dt> <dd>Rainy City Publishing, Oslo</dd>
-            <dt>Year</dt>      <dd>2026</dd>
-            <dt>ISBN</dt>      <dd>978-82-695058-0-1</dd>
-            <dt>Subjects</dt>  <dd>Poetry. Life stories. Journals.</dd>
-            <dt>Status</dt>    <dd class="status">On shelf. Not for loan.</dd>
-          </dl>
-          <span class="hole" aria-hidden="true"></span>
-        </div>
-
-        <div class="buy">
-          <span class="default-ring">
-            <a class="os9-button" href="https://www.amazon.com/dp/8269505803">Buy on Amazon</a>
-          </span>
-          <span class="buy-note">The library copy stays at the desk.</span>
-        </div>
+        <h1>Welcome to the Rainy City Public Library</h1>
+        <p>
+          Come in out of the rain. The library keeps the books written in
+          Rainy City and about it, and Lisa keeps the library.
+        </p>
+        <p>
+          Ask her anything at the desk. She knows where every book is shelved,
+          and she will tell you which ones she won't lend out.
+        </p>
       </div>
-    </div>
-
-    <div class="os9-divider"></div>
-
-    <section class="about">
-      <h2>About the book</h2>
-      <p>
-        A collection of writings about life in transition including poetry,
-        life stories, and journal entries about loneliness, connection,
-        change, and friendship.
-      </p>
-      <blockquote>
-        <p>its just life. there are good days and there are bad ones. we cannot
-        always know which is which. thats why we should always try to do things
-        that make tomorrow a better day.</p>
-        <footer>From the journal, July 28, 2026</footer>
-      </blockquote>
     </section>
 
     <div class="os9-divider"></div>
 
-    <section class="staff-pick">
-      <img src="/characters/lisa.jpg" alt="Lisa, librarian at the Rainy City Public Library">
-      <div>
-        <h2>Staff pick</h2>
-        <p>I keep this one behind the desk. Start with the journal entries,
-        then go back for the poems.</p>
-        <p class="who">Lisa, librarian</p>
+    <section>
+      <h2>New on the shelf</h2>
+
+      <div class="record">
+        <a class="cover" href="https://www.amazon.com/dp/8269505803">
+          <img src="/publishing/selected-works-26-vol-1.png" alt="Cover of Selected Works '26 vol. 1 by John M. Aiken">
+        </a>
+
+        <div>
+          <div class="catalog-card">
+            <div class="call-number">818.6<br>AIK</div>
+            <h3>Selected Works &rsquo;26, vol.&nbsp;1</h3>
+            <dl>
+              <dt>Author</dt>    <dd>Aiken, John M.</dd>
+              <dt>Publisher</dt> <dd>Rainy City Publishing, Oslo</dd>
+              <dt>Year</dt>      <dd>2026</dd>
+              <dt>ISBN</dt>      <dd>978-82-695058-0-1</dd>
+              <dt>Subjects</dt>  <dd>Poetry. Life stories. Journals.</dd>
+              <dt>Status</dt>    <dd class="status">On shelf. Not for loan.</dd>
+            </dl>
+            <p class="summary">
+              A collection of writings about life in transition including
+              poetry, life stories, and journal entries about loneliness,
+              connection, change, and friendship.
+            </p>
+            <span class="hole" aria-hidden="true"></span>
+          </div>
+
+          <div class="buy">
+            <span class="default-ring">
+              <a class="os9-button" href="https://www.amazon.com/dp/8269505803">Buy on Amazon</a>
+            </span>
+            <span class="buy-note">The library copy stays at the desk.</span>
+          </div>
+        </div>
       </div>
     </section>
 
